@@ -1,0 +1,29 @@
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.idea/
+android/*.iml
+android/app/release/
+*.apk
+*.aab
+
+# Keystore (commit if shared, ignore if private)
+# android/app/*.jks
+
+# Backend
+backend/node_modules/
+backend/.wrangler/
+backend/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,19 @@
+{
+  "name": "kiosk-mda-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "seed:test": "node scripts/upload-config.mjs test backend/sample-config.xml",
+    "seed:prod": "node scripts/upload-config.mjs prod backend/sample-config.xml"
+  },
+  "dependencies": {
+    "hono": "^4.6.3"
+  },
+  "devDependencies": {
+    "wrangler": "^3.86.0"
+  }
+}

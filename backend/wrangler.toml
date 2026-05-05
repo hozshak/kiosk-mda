@@ -1,0 +1,25 @@
+name = "kiosk-mda"
+main = "src/index.js"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# account_id = "DEINE_CLOUDFLARE_ACCOUNT_ID"
+
+# Custom Domain (optional - sonst .workers.dev)
+# routes = [
+#   { pattern = "kiosk.deine-domain.de", custom_domain = true }
+# ]
+
+[[r2_buckets]]
+binding = "CONFIGS"
+bucket_name = "kiosk-mda-configs"
+
+[[kv_namespaces]]
+binding = "ETAGS"
+id = "ERSETZEN_NACH_NAMESPACE_CREATE"
+
+[vars]
+ENVIRONMENT = "production"
+
+# Admin-Token via Secret setzen:
+# echo "RANDOM_HEX_64" | npx wrangler secret put ADMIN_TOKEN

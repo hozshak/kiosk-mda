@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config version="1" environment="prod">
+    <browser>
+        <startUrl>https://erp.example.com/mobile</startUrl>
+        <bookmarks>
+            <bookmark name="Start" url="https://erp.example.com/mobile" />
+            <bookmark name="Pickliste" url="https://erp.example.com/mobile/pick" />
+            <bookmark name="Inventur" url="https://erp.example.com/mobile/stock" />
+        </bookmarks>
+        <clearCacheOnExit>false</clearCacheOnExit>
+        <javaScriptEnabled>true</javaScriptEnabled>
+    </browser>
+
+    <device>
+        <orientation>landscape</orientation>
+        <displayTimeout>0</displayTimeout>
+    </device>
+
+    <admin>
+        <!-- SHA-256 von "1234" - via POST /admin/hash-pin generieren -->
+        <pinHash>03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4</pinHash>
+    </admin>
+
+    <server>
+        <configUrl>https://kiosk.deine-domain.de/config/prod</configUrl>
+        <pollIntervalSec>300</pollIntervalSec>
+    </server>
+</config>

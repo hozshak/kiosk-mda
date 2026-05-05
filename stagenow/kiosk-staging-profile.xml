@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Zebra StageNow MX-Profile für Kiosk-MDA-Erstinstallation.
+
+  Verwendung:
+  1. Profile in StageNow importieren (StageNow Studio → Import)
+  2. APK-Pfad anpassen (siehe FileMgr-Block)
+  3. Profile als Barcode/Wifi-Config exportieren
+  4. Mit Zebra-Gerät scannen → automatisches Staging
+
+  Voraussetzungen:
+  - Zebra-Gerät ist factory-resettet ODER im StageNow-Modus
+  - APK ist über HTTPS oder lokalen FTP-Pfad erreichbar
+-->
+<characteristic-list>
+
+    <!-- 1. Wifi-Konfiguration (anpassen!) -->
+    <characteristic type="WiFiMgr" version="9.3">
+        <parm name="WiFiAction" value="1"/>
+        <characteristic type="WiFiNetwork">
+            <parm name="WlanSsid" value="DEIN_WIFI_SSID"/>
+            <parm name="WlanSecurityMode" value="3"/>
+            <parm name="WlanWpaPassword" value="DEIN_WIFI_PASSWORT"/>
+            <parm name="WlanAutoStartConnection" value="1"/>
+        </characteristic>
+    </characteristic>
+
+    <!-- 2. APK-Download und -Installation -->
+    <characteristic type="FileMgr" version="9.3">
+        <parm name="FileAction" value="1"/>
+        <characteristic type="File">
+            <parm name="FileSourcePath" value="https://kiosk-deploy.deine-domain.de/kiosk-mda.apk"/>
+            <parm name="FileTargetPath" value="/sdcard/Download/kiosk-mda.apk"/>
+            <parm name="FileTargetAccessMethod" value="0"/>
+        </characteristic>
+    </characteristic>
+
+    <characteristic type="AppMgr" version="9.3">
+        <parm name="Action" value="1"/>
+        <parm name="APK" value="/sdcard/Download/kiosk-mda.apk"/>
+    </characteristic>
+
+    <!-- 3. Device-Owner setzen (Zebra-spezifisch via DPM-Wrapper) -->
+    <characteristic type="DevAdmin" version="9.3">
+        <parm name="AdminAction" value="1"/>
+        <parm name="AdminPackage" value="com.kiosk.mda"/>
+        <parm name="AdminReceiver" value="com.kiosk.mda.admin.KioskDeviceAdminReceiver"/>
+        <parm name="DeviceOwner" value="1"/>
+    </characteristic>
+
+    <!-- 4. Default Launcher festlegen -->
+    <characteristic type="Intent" version="9.3">
+        <parm name="IntentAction" value="android.app.action.SET_DEFAULT_LAUNCHER"/>
+        <parm name="LauncherPackage" value="com.kiosk.mda"/>
+    </characteristic>
+
+    <!-- 5. Power-Management: Display nie ausschalten -->
+    <characteristic type="PowerMgr" version="9.3">
+        <parm name="ScreenOffTimeout" value="0"/>
+        <parm name="StayAwakeOnUSB" value="1"/>
+    </characteristic>
+
+    <!-- 6. UI-Lockdown: Statusleiste sperren, Recents deaktivieren -->
+    <characteristic type="UiMgr" version="9.3">
+        <parm name="EnableStatusBarPullDown" value="2"/>
+        <parm name="EnableNotifications" value="2"/>
+        <parm name="EnableQuickSettings" value="2"/>
+        <parm name="EnableRecentApps" value="2"/>
+    </characteristic>
+
+    <!-- 7. App nach Setup starten -->
+    <characteristic type="Intent" version="9.3">
+        <parm name="IntentAction" value="android.intent.action.MAIN"/>
+        <parm name="IntentCategory" value="android.intent.category.LAUNCHER"/>
+        <parm name="IntentPackage" value="com.kiosk.mda"/>
+        <parm name="IntentClass" value="com.kiosk.mda.MainActivity"/>
+    </characteristic>
+
+</characteristic-list>
