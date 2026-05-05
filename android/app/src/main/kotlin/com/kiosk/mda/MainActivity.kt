@@ -112,8 +112,12 @@ class MainActivity : AppCompatActivity() {
         binding.webView.settings.javaScriptEnabled = config.browser.javaScriptEnabled
 
         val current = binding.webView.url
-        if (current.isNullOrBlank() || current == "about:blank") {
-            val target = config.browser.startUrl.ifBlank { "about:blank" }
+        val target = when {
+            config.browser.startUrl.isBlank() || config.browser.startUrl == "about:blank" ->
+                "file:///android_asset/setup.html"
+            else -> config.browser.startUrl
+        }
+        if (current.isNullOrBlank() || current == "about:blank" || current.startsWith("file:///android_asset/")) {
             binding.webView.loadUrl(target)
         }
 
@@ -145,6 +149,8 @@ class MainActivity : AppCompatActivity() {
             settings.domStorageEnabled = true
             settings.allowFileAccess = false
             settings.allowContentAccess = false
+            settings.allowFileAccessFromFileURLs = false
+            settings.allowUniversalAccessFromFileURLs = false
             settings.mediaPlaybackRequiresUserGesture = false
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true

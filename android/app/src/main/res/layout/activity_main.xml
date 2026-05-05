@@ -28,9 +28,9 @@
 
     <View
         android:id="@+id/adminTrigger"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:background="?android:attr/selectableItemBackground"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="#334DA3FF"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:contentDescription="@string/admin_trigger_desc" />
