@@ -10,8 +10,7 @@ android/app/release/
 *.apk
 *.aab
 
-# Keystore (commit if shared, ignore if private)
-# android/app/*.jks
+# Keystore wird committed (kiosk-release.jks) damit alle Builds gleich signiert sind
 
 # Backend
 backend/node_modules/

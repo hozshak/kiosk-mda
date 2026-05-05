@@ -112,13 +112,23 @@ class MainActivity : AppCompatActivity() {
         binding.webView.settings.javaScriptEnabled = config.browser.javaScriptEnabled
 
         val current = binding.webView.url
-        val target = when {
-            config.browser.startUrl.isBlank() || config.browser.startUrl == "about:blank" ->
-                "file:///android_asset/setup.html"
-            else -> config.browser.startUrl
+        val target = config.browser.startUrl.takeIf {
+            it.isNotBlank() && it != "about:blank"
         }
-        if (current.isNullOrBlank() || current == "about:blank" || current.startsWith("file:///android_asset/")) {
-            binding.webView.loadUrl(target)
+
+        when {
+            target == null && !current.isNullOrBlank() && current != "about:blank" -> {
+                // Config wurde geleert - WebView leeren
+                binding.webView.loadUrl("about:blank")
+            }
+            target != null && (current.isNullOrBlank() || current == "about:blank") -> {
+                // Erst-Aufruf - URL laden
+                binding.webView.loadUrl(target)
+            }
+            target != null && current != target && current?.startsWith("file:///") == true -> {
+                // Wechsel von alter Asset-URL zur konfigurierten
+                binding.webView.loadUrl(target)
+            }
         }
 
         renderBookmarks(config)

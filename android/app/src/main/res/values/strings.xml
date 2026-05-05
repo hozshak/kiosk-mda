@@ -4,17 +4,32 @@
 
     <string name="admin_title">Admin</string>
     <string name="admin_trigger_desc">Admin-Menü öffnen</string>
-    <string name="admin_pin_prompt">Admin-PIN eingeben</string>
+
+    <string name="admin_pin_prompt">Admin-PIN</string>
     <string name="admin_pin_hint">PIN</string>
+    <string name="admin_pin_hint_default">Erstinstallation: 0000</string>
     <string name="admin_unlock">Entsperren</string>
     <string name="admin_wrong_pin">Falsche PIN</string>
     <string name="admin_no_pin_configured">Keine PIN konfiguriert. Setup-Code: 0000</string>
+
     <string name="admin_panel_title">Admin-Menü</string>
     <string name="admin_env_label">Aktuelle Umgebung: %1$s</string>
+
+    <string name="admin_section_test_url">Test-URL (Quick-Test)</string>
+    <string name="admin_test_url_help">URL die direkt im Kiosk geladen wird, ohne Server-Config. Überschreibt die XML-Config.</string>
+    <string name="admin_btn_load_test">URL laden</string>
+    <string name="admin_btn_clear_test">Löschen</string>
+    <string name="admin_quick_examples">Beispiele:</string>
+
+    <string name="admin_section_server">Server-Config</string>
     <string name="admin_btn_sync">Config jetzt synchronisieren</string>
     <string name="admin_section_environment">Umgebung wechseln</string>
     <string name="admin_section_url">Config-URL überschreiben (optional)</string>
     <string name="admin_url_hint">https://server/config/prod</string>
     <string name="admin_btn_save_url">URL speichern</string>
+
+    <string name="admin_section_help">Hilfe / Bedienung</string>
+    <string name="admin_help_text">• Admin öffnen: oben rechts (kleiner Punkt) — 3× tippen ODER lange drücken (~1,5s)\n\n• Bei Erstinstallation ist die PIN 0000. Echte PIN wird über die XML-Config gesetzt (SHA-256-Hash).\n\n• Damit andere Apps gesperrt sind: in den Android-Einstellungen → Apps → Standard-Apps → Home-App → Kiosk MDA. Vollständiger Lockdown nur mit Device-Owner (StageNow oder ADB).\n\n• Automatischer Sync: alle 15 Minuten holt die App die aktuelle Config vom Server (sofern Config-URL gesetzt).</string>
+
     <string name="admin_btn_exit">Kiosk beenden (Notfall)</string>
 </resources>

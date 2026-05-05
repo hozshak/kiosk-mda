@@ -50,11 +50,19 @@ class ConfigStore(context: Context) {
 
     fun overrideConfigUrl(): String? = prefs.getString(KEY_URL_OVERRIDE, null)
 
+    /** Lokale Test-Start-URL die auch ohne Server-Config greift. */
+    fun setTestStartUrl(url: String?) {
+        prefs.edit().putString(KEY_TEST_START_URL, url).apply()
+    }
+
+    fun testStartUrl(): String? = prefs.getString(KEY_TEST_START_URL, null)
+
     companion object {
         private const val KEY_XML = "config_xml"
         private const val KEY_ETAG = "config_etag"
         private const val KEY_UPDATED = "config_updated_ms"
         private const val KEY_ENV = "environment"
         private const val KEY_URL_OVERRIDE = "config_url_override"
+        private const val KEY_TEST_START_URL = "test_start_url"
     }
 }

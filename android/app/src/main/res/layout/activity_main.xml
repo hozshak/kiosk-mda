@@ -7,7 +7,6 @@
     android:background="@android:color/black"
     android:fitsSystemWindows="false">
 
-    <!-- WebView ZUERST - damit der Admin-Trigger darüber liegt -->
     <WebView
         android:id="@+id/webView"
         android:layout_width="0dp"
@@ -24,30 +23,41 @@
         android:background="#1A1A1A"
         android:scrollbars="none"
         android:elevation="4dp"
+        android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/adminTrigger">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <LinearLayout
             android:id="@+id/bookmarkBar"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:orientation="horizontal"
-            android:padding="4dp"
-            android:visibility="gone" />
+            android:padding="4dp" />
     </HorizontalScrollView>
 
-    <!-- Admin-Trigger ZULETZT - liegt damit über WebView und Bookmarks -->
+    <!-- Unsichtbare Touch-Flaeche fuer Triple-Tap / Long-Press -->
     <View
         android:id="@+id/adminTrigger"
         android:layout_width="64dp"
         android:layout_height="64dp"
-        android:background="#664DA3FF"
         android:elevation="20dp"
         android:clickable="true"
         android:focusable="true"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:contentDescription="@string/admin_trigger_desc" />
+
+    <!-- Kleiner sichtbarer Indikator-Punkt -->
+    <View
+        android:id="@+id/adminDot"
+        android:layout_width="10dp"
+        android:layout_height="10dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginEnd="14dp"
+        android:elevation="21dp"
+        android:background="@drawable/admin_dot"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -28,13 +28,29 @@ class AdminActivity : AppCompatActivity() {
         binding.adminSection.visibility = android.view.View.GONE
 
         binding.btnUnlock.setOnClickListener { verifyPin() }
+        binding.txtPin.setOnEditorActionListener { _, _, _ -> verifyPin(); true }
+
         binding.btnSync.setOnClickListener { triggerSync() }
         binding.btnExit.setOnClickListener { exitKiosk() }
         binding.btnSetUrl.setOnClickListener { saveOverrideUrl() }
         binding.btnEnvProd.setOnClickListener { setEnvironment("prod") }
         binding.btnEnvTest.setOnClickListener { setEnvironment("test") }
 
+        binding.btnLoadTestUrl.setOnClickListener { loadTestUrl() }
+        binding.btnClearTestUrl.setOnClickListener { clearTestUrl() }
+
+        binding.chipExample1.setOnClickListener {
+            binding.txtTestUrl.setText("https://duckduckgo.com")
+        }
+        binding.chipExample2.setOnClickListener {
+            binding.txtTestUrl.setText("https://de.m.wikipedia.org/wiki/Hauptseite")
+        }
+        binding.chipExample3.setOnClickListener {
+            binding.txtTestUrl.setText("https://www.tagesschau.de")
+        }
+
         binding.txtConfigUrl.setText(repo.overrideUrl() ?: "")
+        binding.txtTestUrl.setText(repo.testStartUrl() ?: "")
         binding.txtCurrentEnv.text = getString(
             com.kiosk.mda.R.string.admin_env_label,
             repo.environment()
@@ -47,7 +63,7 @@ class AdminActivity : AppCompatActivity() {
         val actual = sha256Hex(entered)
 
         if (expected.isBlank()) {
-            // Erstinbetriebnahme - kein Hash gesetzt, nur Bypass-Code "0000"
+            // Erstinbetriebnahme - nur 0000 als Bypass
             if (entered == "0000") {
                 showAdminPanel()
             } else {
@@ -90,6 +106,26 @@ class AdminActivity : AppCompatActivity() {
             Toast.makeText(this@AdminActivity, msg, Toast.LENGTH_LONG).show()
             binding.btnSync.isEnabled = true
         }
+    }
+
+    private fun loadTestUrl() {
+        if (!pinVerified) return
+        val raw = binding.txtTestUrl.text.toString().trim()
+        if (raw.isBlank()) {
+            Toast.makeText(this, "Keine URL eingegeben", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val url = if (raw.startsWith("http://") || raw.startsWith("https://")) raw else "https://$raw"
+        repo.setTestStartUrl(url)
+        Toast.makeText(this, "Lade $url", Toast.LENGTH_SHORT).show()
+        finish()
+    }
+
+    private fun clearTestUrl() {
+        if (!pinVerified) return
+        repo.setTestStartUrl(null)
+        binding.txtTestUrl.text?.clear()
+        Toast.makeText(this, "Test-URL zurückgesetzt", Toast.LENGTH_SHORT).show()
     }
 
     private fun saveOverrideUrl() {

@@ -45,16 +45,19 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
+            // KEIN applicationIdSuffix - debug und release haben selbe ID,
+            // damit Updates ohne Deinstallation funktionieren
             isDebuggable = true
+            // Selber Keystore wie Release fuer konsistente Signatur ueber alle Builds
+            val keystoreFile = file("kiosk-release.jks")
+            if (keystoreFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            // Minifizierung vorerst aus - vermeidet R8-Issues mit Tink/Security-Crypto
+            isMinifyEnabled = false
+            isShrinkResources = false
             val keystoreFile = file("kiosk-release.jks")
             if (keystoreFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")

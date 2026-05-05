@@ -22,8 +22,31 @@ class ConfigRepository private constructor(context: Context) {
     val config: StateFlow<KioskConfig> = _config.asStateFlow()
 
     private fun loadInitialConfig(): KioskConfig {
-        val xml = store.loadXml() ?: return KioskConfig.DEFAULT
-        return ConfigParser.parse(xml).getOrDefault(KioskConfig.DEFAULT)
+        val xml = store.loadXml()
+        val base = if (xml != null) {
+            ConfigParser.parse(xml).getOrDefault(KioskConfig.DEFAULT)
+        } else {
+            KioskConfig.DEFAULT
+        }
+        return applyTestUrlOverride(base)
+    }
+
+    private fun applyTestUrlOverride(base: KioskConfig): KioskConfig {
+        val testUrl = store.testStartUrl()?.takeIf { it.isNotBlank() } ?: return base
+        return base.copy(browser = base.browser.copy(startUrl = testUrl))
+    }
+
+    fun testStartUrl(): String? = store.testStartUrl()
+
+    fun setTestStartUrl(url: String?) {
+        store.setTestStartUrl(url)
+        _config.value = applyTestUrlOverride(
+            run {
+                val xml = store.loadXml()
+                if (xml != null) ConfigParser.parse(xml).getOrDefault(KioskConfig.DEFAULT)
+                else KioskConfig.DEFAULT
+            }
+        )
     }
 
     fun environment(): String = store.environment()
@@ -71,8 +94,9 @@ class ConfigRepository private constructor(context: Context) {
                         return@withContext SyncResult.ParseError(it.message ?: "parse failed")
                     }
                     store.saveXml(body, etag)
-                    _config.value = parsed
-                    SyncResult.Updated(parsed)
+                    val merged = applyTestUrlOverride(parsed)
+                    _config.value = merged
+                    SyncResult.Updated(merged)
                 }
                 HttpURLConnection.HTTP_NOT_MODIFIED -> SyncResult.NotModified
                 else -> SyncResult.HttpError(code)
