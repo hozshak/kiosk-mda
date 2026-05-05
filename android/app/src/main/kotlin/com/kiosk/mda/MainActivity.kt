@@ -164,14 +164,23 @@ class MainActivity : AppCompatActivity() {
     private fun setupAdminTrigger() {
         binding.adminTrigger.setOnClickListener {
             val now = System.currentTimeMillis()
-            if (now - lastTriplePressMs > 1500) triplePressCount = 0
+            if (now - lastTriplePressMs > 2000) triplePressCount = 0
             triplePressCount++
             lastTriplePressMs = now
             if (triplePressCount >= 3) {
                 triplePressCount = 0
-                startActivity(Intent(this, AdminActivity::class.java))
+                openAdmin()
             }
         }
+        // Fallback: Long-Press (1,5s) öffnet Admin direkt
+        binding.adminTrigger.setOnLongClickListener {
+            openAdmin()
+            true
+        }
+    }
+
+    private fun openAdmin() {
+        startActivity(Intent(this, com.kiosk.mda.admin.AdminActivity::class.java))
     }
 
     private fun enableImmersive() {
