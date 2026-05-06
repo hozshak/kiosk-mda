@@ -11,6 +11,11 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
+    <!-- Erlaubt Schreiben in Settings.System (z.B. SCREEN_OFF_TIMEOUT).
+         User muss Berechtigung manuell erteilen ODER App ist Device-Owner. -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
     <application
         android:name=".KioskApplication"
         android:allowBackup="false"

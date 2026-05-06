@@ -12,8 +12,11 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
+import android.provider.Settings
+import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
+import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
@@ -30,6 +33,7 @@ import com.kiosk.mda.config.ConfigSyncWorker
 import com.kiosk.mda.config.KioskConfig
 import com.kiosk.mda.config.Orientation
 import com.kiosk.mda.databinding.ActivityMainBinding
+import com.kiosk.mda.push.PushClient
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -37,6 +41,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var repo: ConfigRepository
+    private lateinit var pushClient: PushClient
 
     private var triplePressCount = 0
     private var lastTriplePressMs = 0L
@@ -50,6 +55,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repo = ConfigRepository.get(this)
+        pushClient = PushClient(applicationContext)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -78,11 +84,73 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repo.fetchRemote()
         }
+
+        // WebSocket-Push starten - Backend pingt bei Config-Update
+        pushClient.start(lifecycleScope)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (repo.config.value.browser.clearCacheOnExit) {
+            clearWebViewData()
+        }
     }
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(configReceiver) }
+        runCatching { pushClient.stop() }
+        if (repo.config.value.browser.clearCacheOnExit) {
+            clearWebViewData()
+        }
         super.onDestroy()
+    }
+
+    /**
+     * Setzt den Display-Timeout.
+     * - 0 oder negativ: FLAG_KEEP_SCREEN_ON (always-on, immer wenn App im Vordergrund)
+     * - > 0: Versucht system-weit SCREEN_OFF_TIMEOUT in Sekunden zu setzen
+     *   (braucht WRITE_SETTINGS - manuell zu erteilen oder via Device-Owner)
+     */
+    private fun applyDisplayTimeout(seconds: Int) {
+        if (seconds <= 0) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            return
+        }
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        try {
+            val canWrite = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                Settings.System.canWrite(this)
+            } else true
+
+            if (canWrite) {
+                Settings.System.putInt(
+                    contentResolver,
+                    Settings.System.SCREEN_OFF_TIMEOUT,
+                    seconds * 1000
+                )
+                Log.i("Kiosk", "Screen-off timeout set to ${seconds}s")
+            } else {
+                Log.w("Kiosk", "WRITE_SETTINGS not granted - cannot set screen-off timeout")
+            }
+        } catch (e: Exception) {
+            Log.w("Kiosk", "applyDisplayTimeout failed: ${e.message}")
+        }
+    }
+
+    private fun clearWebViewData() {
+        try {
+            binding.webView.clearCache(true)
+            binding.webView.clearHistory()
+            binding.webView.clearFormData()
+            binding.webView.clearMatches()
+            binding.webView.clearSslPreferences()
+            CookieManager.getInstance().removeAllCookies(null)
+            CookieManager.getInstance().flush()
+            WebStorage.getInstance().deleteAllData()
+            Log.i("Kiosk", "WebView data cleared (cache, cookies, storage)")
+        } catch (e: Exception) {
+            Log.w("Kiosk", "clearWebViewData failed: ${e.message}")
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -103,11 +171,7 @@ class MainActivity : AppCompatActivity() {
             Orientation.AUTO -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
 
-        if (config.device.displayTimeoutSec == 0) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
+        applyDisplayTimeout(config.device.displayTimeoutSec)
 
         binding.webView.settings.javaScriptEnabled = config.browser.javaScriptEnabled
 

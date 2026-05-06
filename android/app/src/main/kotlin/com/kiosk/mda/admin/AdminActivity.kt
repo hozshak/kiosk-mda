@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
@@ -49,6 +50,9 @@ class AdminActivity : AppCompatActivity() {
         binding.btnResetDefaultLauncher.setOnClickListener { openCurrentLauncherDetails() }
         binding.btnPickLauncherNow.setOnClickListener { triggerLauncherPicker() }
 
+        // Berechtigungen
+        binding.btnGrantWriteSettings.setOnClickListener { requestWriteSettings() }
+
         binding.chipExample1.setOnClickListener {
             binding.txtTestUrl.setText("https://duckduckgo.com")
         }
@@ -71,6 +75,37 @@ class AdminActivity : AppCompatActivity() {
         super.onResume()
         if (pinVerified) {
             updateCurrentLauncherDisplay()
+            updateWriteSettingsStatus()
+        }
+    }
+
+    private fun updateWriteSettingsStatus() {
+        val granted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Settings.System.canWrite(this)
+        } else true
+        val statusText = if (granted) {
+            getString(com.kiosk.mda.R.string.admin_permission_granted)
+        } else {
+            getString(com.kiosk.mda.R.string.admin_permission_missing)
+        }
+        binding.txtWriteSettingsStatus.text =
+            "${getString(com.kiosk.mda.R.string.admin_permission_write_settings)}: $statusText"
+        binding.btnGrantWriteSettings.isEnabled = !granted
+    }
+
+    private fun requestWriteSettings() {
+        if (!pinVerified) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            Toast.makeText(this, "Auf dieser Android-Version automatisch erteilt", Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Konnte Settings nicht öffnen: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -105,6 +140,7 @@ class AdminActivity : AppCompatActivity() {
         binding.pinSection.visibility = android.view.View.GONE
         binding.adminSection.visibility = android.view.View.VISIBLE
         updateCurrentLauncherDisplay()
+        updateWriteSettingsStatus()
     }
 
     // ============ Test-URL ============

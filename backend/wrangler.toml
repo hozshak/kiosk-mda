@@ -18,6 +18,16 @@ bucket_name = "kiosk-mda-configs"
 binding = "ETAGS"
 id = "ERSETZEN_NACH_NAMESPACE_CREATE"
 
+# Durable Object für WebSocket-Push pro Environment
+[[durable_objects.bindings]]
+name = "CONFIG_BROADCASTER"
+class_name = "ConfigBroadcaster"
+
+# Free-Plan benötigt sqlite-basierte DOs
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ConfigBroadcaster"]
+
 [vars]
 ENVIRONMENT = "production"
 

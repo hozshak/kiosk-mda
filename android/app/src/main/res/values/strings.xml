@@ -29,6 +29,12 @@
     <string name="admin_btn_pick_now">Launcher-Auswahl erzwingen</string>
     <string name="admin_launcher_help">Damit Kiosk MDA als Default-Launcher gesetzt werden kann, muss zuerst der bestehende Default zurückgesetzt werden. Tippe auf "Zurücksetzen" → in der App-Info auf "Standardmäßig öffnen" → "Standardeinstellungen löschen". Dann HOME-Taste drücken → Kiosk MDA wählen.</string>
 
+    <string name="admin_section_permissions">Berechtigungen</string>
+    <string name="admin_permission_write_settings">Display-Timeout-Steuerung (WRITE_SETTINGS)</string>
+    <string name="admin_permission_granted">erteilt</string>
+    <string name="admin_permission_missing">fehlt</string>
+    <string name="admin_btn_grant_write_settings">Berechtigung erteilen</string>
+
     <string name="admin_section_server">Server-Config</string>
     <string name="admin_btn_sync">Config jetzt synchronisieren</string>
     <string name="admin_section_environment">Umgebung wechseln</string>

@@ -42,10 +42,36 @@ node scripts/upload-config.mjs test sample-config.xml
 | Methode | Pfad | Auth | Zweck |
 |---|---|---|---|
 | `GET` | `/config/:env` | – | Geräte holen Config (mit ETag-Caching) |
-| `PUT` | `/admin/config/:env` | Bearer | Admin lädt neue XML hoch |
+| `WS` | `/ws/:env` | – | WebSocket-Verbindung — Server pingt bei Config-Update |
+| `GET` | `/ws/:env/stats` | – | Anzahl aktive Push-Verbindungen |
+| `PUT` | `/admin/config/:env` | Bearer | Admin lädt neue XML hoch (broadcastet automatisch) |
 | `GET` | `/admin/config/:env` | Bearer | Admin liest aktuelle XML |
 | `POST` | `/admin/hash-pin` | Bearer | Wandelt PIN in SHA-256-Hash |
 | `GET` | `/health` | – | Healthcheck |
+
+## Push-Architektur
+
+```
+                    ┌─────────────────────────┐
+                    │   Cloudflare Worker     │
+                    │                         │
+   PUT  /admin/...  │   ┌──────────────────┐  │   WS  /ws/prod
+        ────────────┼─→ │ ConfigBroadcaster│ ←┼────────── Geräte (N)
+   (Admin)          │   │ (Durable Object) │  │
+                    │   └────────┬─────────┘  │
+                    │            │ broadcast  │
+                    │            ▼            │
+                    │     [WebSocket-Sessions]│
+                    └─────────────────────────┘
+
+1. Admin pusht neue XML via PUT /admin/config/prod
+2. Worker speichert in R2 + invalidiert ETag
+3. Worker holt ConfigBroadcaster-DO für "prod"
+4. DO sendet "config-updated" an alle offenen WebSockets
+5. Geräte triggern sofortigen Pull via /config/prod
+```
+
+Verbundene Geräte sind über `GET /ws/:env/stats` einsehbar.
 
 ## PIN-Hash erzeugen
 ```bash

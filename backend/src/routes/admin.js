@@ -46,7 +46,28 @@ adminRoutes.put('/config/:env', async (c) => {
   });
   await c.env.ETAGS.delete(etagKey(env));
 
-  return c.json({ ok: true, env, bytes: xml.length });
+  // Broadcast an alle verbundenen Geräte in diesem Environment
+  let delivered = 0;
+  try {
+    const id = c.env.CONFIG_BROADCASTER.idFromName(env);
+    const stub = c.env.CONFIG_BROADCASTER.get(id);
+    const res = await stub.fetch(
+      new Request('https://internal/broadcast', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'config-updated',
+          env,
+          ts: Date.now(),
+        }),
+      })
+    );
+    const data = await res.json();
+    delivered = data.delivered || 0;
+  } catch (e) {
+    console.error('broadcast failed:', e);
+  }
+
+  return c.json({ ok: true, env, bytes: xml.length, delivered });
 });
 
 /**
