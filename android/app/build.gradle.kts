@@ -36,9 +36,10 @@ android {
             val keystoreFile = file("kiosk-release.jks")
             if (keystoreFile.exists()) {
                 storeFile = keystoreFile
-                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "kiosk123"
-                keyAlias = System.getenv("KEY_ALIAS") ?: "kiosk"
-                keyPassword = System.getenv("KEY_PASSWORD") ?: "kiosk123"
+                // takeIf isNotBlank wichtig: leere Env-Vars in CI würden sonst Default überschreiben
+                storePassword = System.getenv("KEYSTORE_PASSWORD")?.takeIf { it.isNotBlank() } ?: "kiosk123"
+                keyAlias = System.getenv("KEY_ALIAS")?.takeIf { it.isNotBlank() } ?: "kiosk"
+                keyPassword = System.getenv("KEY_PASSWORD")?.takeIf { it.isNotBlank() } ?: "kiosk123"
             }
         }
     }
