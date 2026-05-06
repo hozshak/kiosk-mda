@@ -17,9 +17,17 @@
 
     <string name="admin_section_test_url">Test-URL (Quick-Test)</string>
     <string name="admin_test_url_help">URL die direkt im Kiosk geladen wird, ohne Server-Config. Überschreibt die XML-Config.</string>
-    <string name="admin_btn_load_test">URL laden</string>
+    <string name="admin_btn_save_test">Speichern</string>
+    <string name="admin_btn_load_test">Laden + Speichern</string>
     <string name="admin_btn_clear_test">Löschen</string>
     <string name="admin_quick_examples">Beispiele:</string>
+
+    <string name="admin_section_launcher">Launcher / Home-App</string>
+    <string name="admin_launcher_current">Aktueller Standard-Launcher: %1$s</string>
+    <string name="admin_btn_open_home_settings">Home-App-Einstellungen öffnen</string>
+    <string name="admin_btn_reset_default_launcher">Aktuellen Launcher zurücksetzen</string>
+    <string name="admin_btn_pick_now">Launcher-Auswahl erzwingen</string>
+    <string name="admin_launcher_help">Damit Kiosk MDA als Default-Launcher gesetzt werden kann, muss zuerst der bestehende Default zurückgesetzt werden. Tippe auf "Zurücksetzen" → in der App-Info auf "Standardmäßig öffnen" → "Standardeinstellungen löschen". Dann HOME-Taste drücken → Kiosk MDA wählen.</string>
 
     <string name="admin_section_server">Server-Config</string>
     <string name="admin_btn_sync">Config jetzt synchronisieren</string>

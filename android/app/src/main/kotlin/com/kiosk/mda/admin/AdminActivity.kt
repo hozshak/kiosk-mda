@@ -1,8 +1,11 @@
 package com.kiosk.mda.admin
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -36,8 +39,15 @@ class AdminActivity : AppCompatActivity() {
         binding.btnEnvProd.setOnClickListener { setEnvironment("prod") }
         binding.btnEnvTest.setOnClickListener { setEnvironment("test") }
 
-        binding.btnLoadTestUrl.setOnClickListener { loadTestUrl() }
+        // Test-URL: getrennte Save / Load+Save / Clear Buttons
+        binding.btnLoadTestUrl.setOnClickListener { loadAndSaveTestUrl() }
+        binding.btnSaveTestUrl.setOnClickListener { saveTestUrl() }
         binding.btnClearTestUrl.setOnClickListener { clearTestUrl() }
+
+        // Launcher / Home-App
+        binding.btnOpenHomeSettings.setOnClickListener { openHomeSettings() }
+        binding.btnResetDefaultLauncher.setOnClickListener { openCurrentLauncherDetails() }
+        binding.btnPickLauncherNow.setOnClickListener { triggerLauncherPicker() }
 
         binding.chipExample1.setOnClickListener {
             binding.txtTestUrl.setText("https://duckduckgo.com")
@@ -57,13 +67,19 @@ class AdminActivity : AppCompatActivity() {
         )
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (pinVerified) {
+            updateCurrentLauncherDisplay()
+        }
+    }
+
     private fun verifyPin() {
         val entered = binding.txtPin.text.toString()
         val expected = repo.config.value.admin.pinHash.lowercase()
         val actual = sha256Hex(entered)
 
         if (expected.isBlank()) {
-            // Erstinbetriebnahme - nur 0000 als Bypass
             if (entered == "0000") {
                 showAdminPanel()
             } else {
@@ -88,7 +104,141 @@ class AdminActivity : AppCompatActivity() {
         pinVerified = true
         binding.pinSection.visibility = android.view.View.GONE
         binding.adminSection.visibility = android.view.View.VISIBLE
+        updateCurrentLauncherDisplay()
     }
+
+    // ============ Test-URL ============
+
+    private fun normalizeUrl(raw: String): String? {
+        val trimmed = raw.trim()
+        if (trimmed.isBlank()) return null
+        return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) trimmed
+        else "https://$trimmed"
+    }
+
+    private fun saveTestUrl() {
+        if (!pinVerified) return
+        val url = normalizeUrl(binding.txtTestUrl.text.toString())
+        if (url == null) {
+            Toast.makeText(this, "Keine URL eingegeben", Toast.LENGTH_SHORT).show()
+            return
+        }
+        repo.setTestStartUrl(url)
+        binding.txtTestUrl.setText(url)
+        Toast.makeText(this, "Gespeichert: $url", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun loadAndSaveTestUrl() {
+        if (!pinVerified) return
+        val url = normalizeUrl(binding.txtTestUrl.text.toString())
+        if (url == null) {
+            Toast.makeText(this, "Keine URL eingegeben", Toast.LENGTH_SHORT).show()
+            return
+        }
+        repo.setTestStartUrl(url)
+        Toast.makeText(this, "Lade $url", Toast.LENGTH_SHORT).show()
+        finish()
+    }
+
+    private fun clearTestUrl() {
+        if (!pinVerified) return
+        repo.setTestStartUrl(null)
+        binding.txtTestUrl.text?.clear()
+        Toast.makeText(this, "Test-URL zurückgesetzt", Toast.LENGTH_SHORT).show()
+    }
+
+    // ============ Launcher / Home-App ============
+
+    private fun currentDefaultLauncher(): Pair<String, String>? {
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        val resolved = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            ?: return null
+        val pkg = resolved.activityInfo?.packageName ?: return null
+        val label = try {
+            packageManager.getApplicationLabel(
+                packageManager.getApplicationInfo(pkg, 0)
+            ).toString()
+        } catch (_: Exception) {
+            pkg
+        }
+        return pkg to label
+    }
+
+    private fun updateCurrentLauncherDisplay() {
+        val (pkg, label) = currentDefaultLauncher() ?: run {
+            binding.txtCurrentLauncher.text = "Kein Launcher gesetzt"
+            return
+        }
+        val display = if (pkg == packageName) "$label (das ist diese App)" else "$label  ($pkg)"
+        binding.txtCurrentLauncher.text = getString(
+            com.kiosk.mda.R.string.admin_launcher_current, display
+        )
+    }
+
+    private fun openHomeSettings() {
+        if (!pinVerified) return
+        val intents = listOf(
+            Intent("android.settings.HOME_SETTINGS"),
+            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
+            Intent(Settings.ACTION_SETTINGS)
+        )
+        for (i in intents) {
+            try {
+                startActivity(i)
+                return
+            } catch (_: ActivityNotFoundException) {
+                // try next
+            }
+        }
+        Toast.makeText(this, "Keine passende Einstellung gefunden", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openCurrentLauncherDetails() {
+        if (!pinVerified) return
+        val (pkg, label) = currentDefaultLauncher() ?: run {
+            Toast.makeText(this, "Kein Default-Launcher gesetzt", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (pkg == packageName) {
+            Toast.makeText(this, "Wir sind bereits Default-Launcher", Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:$pkg")
+            }
+            startActivity(intent)
+            Toast.makeText(
+                this,
+                "App-Info zu $label öffnet. Dort: 'Standardmäßig öffnen' → 'Standardeinstellungen löschen'",
+                Toast.LENGTH_LONG
+            ).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Konnte App-Info nicht öffnen: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun triggerLauncherPicker() {
+        if (!pinVerified) return
+        // Versuch 1: HOME_SETTINGS
+        try {
+            startActivity(Intent("android.settings.HOME_SETTINGS"))
+            return
+        } catch (_: ActivityNotFoundException) {
+        }
+        // Versuch 2: Chooser-Intent ueber HOME-Intent
+        try {
+            val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            val chooser = Intent.createChooser(home, "Launcher wählen").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(chooser)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Launcher-Auswahl nicht möglich: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // ============ Server-Config ============
 
     private fun triggerSync() {
         if (!pinVerified) return
@@ -106,26 +256,6 @@ class AdminActivity : AppCompatActivity() {
             Toast.makeText(this@AdminActivity, msg, Toast.LENGTH_LONG).show()
             binding.btnSync.isEnabled = true
         }
-    }
-
-    private fun loadTestUrl() {
-        if (!pinVerified) return
-        val raw = binding.txtTestUrl.text.toString().trim()
-        if (raw.isBlank()) {
-            Toast.makeText(this, "Keine URL eingegeben", Toast.LENGTH_SHORT).show()
-            return
-        }
-        val url = if (raw.startsWith("http://") || raw.startsWith("https://")) raw else "https://$raw"
-        repo.setTestStartUrl(url)
-        Toast.makeText(this, "Lade $url", Toast.LENGTH_SHORT).show()
-        finish()
-    }
-
-    private fun clearTestUrl() {
-        if (!pinVerified) return
-        repo.setTestStartUrl(null)
-        binding.txtTestUrl.text?.clear()
-        Toast.makeText(this, "Test-URL zurückgesetzt", Toast.LENGTH_SHORT).show()
     }
 
     private fun saveOverrideUrl() {

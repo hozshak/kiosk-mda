@@ -129,6 +129,15 @@
                     android:text="@string/admin_btn_load_test" />
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSaveTestUrl"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/admin_btn_save_test" />
+
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnClearTestUrl"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
@@ -172,6 +181,60 @@
                     android:text="Tagesschau"
                     style="@style/Widget.Material3.Chip.Suggestion" />
             </com.google.android.material.chip.ChipGroup>
+
+            <!-- ============ LAUNCHER / HOME-APP ============ -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="16dp"
+                android:background="?android:attr/listDivider" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/admin_section_launcher"
+                android:textStyle="bold"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/txtCurrentLauncher"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="12sp"
+                android:alpha="0.7" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOpenHomeSettings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/admin_btn_open_home_settings" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnResetDefaultLauncher"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/admin_btn_reset_default_launcher" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPickLauncherNow"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/admin_btn_pick_now" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/admin_launcher_help"
+                android:textSize="12sp"
+                android:alpha="0.7"
+                android:lineSpacingExtra="2dp" />
 
             <!-- ============ SERVER-CONFIG ============ -->
             <View
