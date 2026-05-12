@@ -1,7 +1,11 @@
 package com.kiosk.mda.push
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Build
+import android.provider.Settings
 import android.util.Log
+import com.kiosk.mda.BuildConfig
 import com.kiosk.mda.config.ConfigRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,8 +27,12 @@ import kotlin.math.min
  *
  * URL wird aus der konfigurierten Config-URL abgeleitet:
  *   https://host/config/prod  ->  wss://host/ws/prod
+ *   http://host:3000/config/prod -> ws://host:3000/ws/prod (für Self-Hosted)
  *
  * Auto-Reconnect mit Backoff: 3s, 6s, 12s, ..., max 60s.
+ *
+ * Sendet bei Connect ein "hello"-Paket mit Device-ID, Modell und App-Version
+ * damit der Server das Gerät in der Devices-Liste registriert.
  */
 class PushClient(private val context: Context) {
 
@@ -56,7 +64,6 @@ class PushClient(private val context: Context) {
     private fun deriveWsUrl(): String? {
         val repo = ConfigRepository.get(context)
         val configUrl = repo.effectiveConfigUrl().takeIf { it.isNotBlank() } ?: return null
-        // /config/prod -> /ws/prod ; https -> wss
         return configUrl
             .replace(Regex("^http://"), "ws://")
             .replace(Regex("^https://"), "wss://")
@@ -76,6 +83,7 @@ class PushClient(private val context: Context) {
             override fun onOpen(ws: WebSocket, response: Response) {
                 Log.i(TAG, "connected")
                 attempt = 0
+                sendHello(ws)
             }
 
             override fun onMessage(ws: WebSocket, text: String) {
@@ -100,12 +108,39 @@ class PushClient(private val context: Context) {
         })
     }
 
+    private fun sendHello(ws: WebSocket) {
+        try {
+            val hello = JSONObject()
+                .put("type", "hello")
+                .put("deviceId", deviceId())
+                .put("model", "${Build.MANUFACTURER} ${Build.MODEL}")
+                .put("appVersion", BuildConfig.VERSION_NAME)
+                .put("androidSdk", Build.VERSION.SDK_INT)
+            ws.send(hello.toString())
+        } catch (e: Exception) {
+            Log.w(TAG, "sendHello failed: ${e.message}")
+        }
+    }
+
+    @SuppressLint("HardwareIds")
+    private fun deviceId(): String {
+        // Android-ID: stabil pro App-Signatur+Device, kein Permission nötig.
+        return try {
+            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+                ?.takeIf { it.isNotBlank() }
+                ?: "unknown-${Build.SERIAL.takeIf { it.isNotBlank() } ?: "dev"}"
+        } catch (_: Exception) {
+            "unknown-device"
+        }
+    }
+
     private fun handleMessage(text: String) {
         try {
             val json = JSONObject(text)
             when (json.optString("type")) {
                 "config-updated" -> triggerConfigSync()
                 "connected" -> Log.i(TAG, "server confirmed connection")
+                "hello-ack" -> Log.i(TAG, "server acknowledged hello")
                 "pong" -> {}
             }
         } catch (e: Exception) {

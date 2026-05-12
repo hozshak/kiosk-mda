@@ -1,0 +1,21 @@
+{
+  "name": "kiosk-mda-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted Kiosk-MDA Config-Server mit Web-Admin",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "hono": "^4.6.3",
+    "@hono/node-server": "^1.13.1",
+    "better-sqlite3": "^11.3.0",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

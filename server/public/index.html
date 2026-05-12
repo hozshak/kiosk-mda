@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kiosk MDA – Admin</title>
+    <link rel="stylesheet" href="/admin/style.css" />
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen">
+        <div class="login-card">
+            <h1>Kiosk MDA</h1>
+            <p class="subtitle">Admin-Anmeldung</p>
+            <form id="login-form">
+                <label>
+                    Benutzer
+                    <input type="text" id="login-user" autocomplete="username" required />
+                </label>
+                <label>
+                    Passwort
+                    <input type="password" id="login-pass" autocomplete="current-password" required />
+                </label>
+                <button type="submit">Anmelden</button>
+                <p id="login-error" class="error"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="screen hidden">
+        <header>
+            <div class="header-inner">
+                <h1>Kiosk MDA</h1>
+                <div class="env-switcher">
+                    <button data-env="prod" class="env-btn active">PROD</button>
+                    <button data-env="test" class="env-btn">TEST</button>
+                </div>
+                <div class="header-right">
+                    <span id="user-label"></span>
+                    <button id="logout-btn" class="ghost">Abmelden</button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <nav class="tabs">
+                <button class="tab active" data-tab="config">Config</button>
+                <button class="tab" data-tab="bookmarks">Bookmarks</button>
+                <button class="tab" data-tab="device">Geräte-Einstellungen</button>
+                <button class="tab" data-tab="security">Sicherheit</button>
+                <button class="tab" data-tab="devices">Geräte (<span id="devices-count">0</span>)</button>
+                <button class="tab" data-tab="raw">XML</button>
+            </nav>
+
+            <!-- Config Tab -->
+            <section class="tab-content active" data-tab="config">
+                <h2>Browser-Konfiguration</h2>
+                <div class="field">
+                    <label>Start-URL</label>
+                    <input type="url" id="cfg-start-url" placeholder="https://erp.example.com" />
+                    <small>Wird beim App-Start als erste Seite geladen.</small>
+                </div>
+                <div class="row">
+                    <label class="checkbox">
+                        <input type="checkbox" id="cfg-clear-cache" />
+                        Cache + Cookies beim Beenden löschen
+                    </label>
+                    <label class="checkbox">
+                        <input type="checkbox" id="cfg-js-enabled" checked />
+                        JavaScript erlauben
+                    </label>
+                </div>
+                <div class="status-bar">
+                    <span id="config-status">Aktive Verbindungen: <strong id="active-count">0</strong></span>
+                    <button id="btn-push" class="primary">Speichern + an Geräte pushen</button>
+                </div>
+            </section>
+
+            <!-- Bookmarks Tab -->
+            <section class="tab-content" data-tab="bookmarks">
+                <h2>Favoriten</h2>
+                <p class="subtitle">Erscheinen als Leiste oben in der Kiosk-App.</p>
+                <div id="bookmarks-list"></div>
+                <button id="btn-add-bookmark" class="ghost">+ Bookmark hinzufügen</button>
+                <div class="status-bar">
+                    <button id="btn-save-bookmarks" class="primary">Speichern + Push</button>
+                </div>
+            </section>
+
+            <!-- Device Tab -->
+            <section class="tab-content" data-tab="device">
+                <h2>Geräte-Verhalten</h2>
+                <div class="field">
+                    <label>Bildschirm-Orientierung</label>
+                    <select id="cfg-orientation">
+                        <option value="auto">Automatisch</option>
+                        <option value="portrait">Portrait (Hochformat)</option>
+                        <option value="landscape">Landscape (Querformat)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Display-Timeout (Sekunden)</label>
+                    <input type="number" id="cfg-display-timeout" min="0" step="5" value="0" />
+                    <small><strong>0</strong> = Display bleibt immer an (Always-On). Sonst Standby nach N Sekunden Inaktivität.</small>
+                </div>
+                <div class="status-bar">
+                    <button id="btn-save-device" class="primary">Speichern + Push</button>
+                </div>
+            </section>
+
+            <!-- Security Tab -->
+            <section class="tab-content" data-tab="security">
+                <h2>Sicherheit</h2>
+                <div class="field">
+                    <label>Admin-PIN</label>
+                    <input type="text" id="cfg-pin" inputmode="numeric" maxlength="12" placeholder="z.B. 1234" />
+                    <small>PIN wird vor dem Speichern als SHA-256-Hash kodiert. Klartext nie übertragen.</small>
+                </div>
+                <div class="field">
+                    <label>Aktueller PIN-Hash</label>
+                    <input type="text" id="cfg-pin-hash" readonly />
+                </div>
+                <div class="status-bar">
+                    <button id="btn-save-pin" class="primary">PIN speichern + Push</button>
+                </div>
+            </section>
+
+            <!-- Devices Tab -->
+            <section class="tab-content" data-tab="devices">
+                <h2>Registrierte Geräte</h2>
+                <p class="subtitle">Alle Geräte die sich bereits mindestens einmal verbunden haben.</p>
+                <table class="devices-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Device-ID</th>
+                            <th>Modell</th>
+                            <th>App-Version</th>
+                            <th>Umgebung</th>
+                            <th>IP</th>
+                            <th>Letzter Kontakt</th>
+                        </tr>
+                    </thead>
+                    <tbody id="devices-body"></tbody>
+                </table>
+            </section>
+
+            <!-- Raw XML Tab -->
+            <section class="tab-content" data-tab="raw">
+                <h2>XML-Quelle</h2>
+                <p class="subtitle">Direkter Edit der XML-Datei. Nach Speichern wird gepusht.</p>
+                <textarea id="raw-xml" spellcheck="false"></textarea>
+                <div class="status-bar">
+                    <button id="btn-save-raw" class="primary">XML speichern + Push</button>
+                </div>
+            </section>
+        </main>
+
+        <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="/admin/app.js"></script>
+</body>
+</html>

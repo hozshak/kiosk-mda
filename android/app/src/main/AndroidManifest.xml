@@ -27,6 +27,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.KioskMDA"
         android:persistent="true"
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="34">
 
         <!-- Main Kiosk Activity (registers as HOME launcher) -->

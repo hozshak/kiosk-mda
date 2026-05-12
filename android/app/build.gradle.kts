@@ -14,7 +14,7 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        buildConfigField("String", "DEFAULT_CONFIG_URL", "\"https://kiosk.example.com/config/prod\"")
+        buildConfigField("String", "DEFAULT_CONFIG_URL", "\"http://192.168.115.177:3000/config/prod\"")
     }
 
     buildFeatures {

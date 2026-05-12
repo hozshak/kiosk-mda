@@ -1,0 +1,15 @@
+services:
+  kiosk-mda:
+    build: .
+    container_name: kiosk-mda-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DATA_DIR=/data
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?ADMIN_PASSWORD muss gesetzt sein}
+    volumes:
+      - ./data:/data
