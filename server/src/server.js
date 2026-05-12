@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const SERVER_ROOT = resolve(__dirname, '..');
 
-const PORT = Number(process.env.PORT || 3000);
+const PORT = Number(process.env.PORT || 8989);
 const HOST = process.env.HOST || '0.0.0.0';
 const DATA_DIR = resolve(process.env.DATA_DIR || join(SERVER_ROOT, 'data'));
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';

@@ -26,7 +26,7 @@ docker compose up -d
 docker compose logs -f
 ```
 
-Erreichbar: `http://192.168.115.177:3000/admin/`
+Erreichbar: `http://192.168.115.177:8989/admin/`
 
 ## Variante 2: Native (systemd)
 
@@ -55,10 +55,10 @@ ADMIN_PASSWORD=geheim npm start
 ## Geräte-Anbindung
 
 In der Kiosk-MDA-App im Admin-Menü:
-1. **Config-URL überschreiben** → `http://192.168.115.177:3000/config/prod`
+1. **Config-URL überschreiben** → `http://192.168.115.177:8989/config/prod`
 2. **Speichern**
 3. App holt beim nächsten Sync die Config vom Server
-4. WebSocket-Push wird automatisch geöffnet auf `ws://192.168.115.177:3000/ws/prod`
+4. WebSocket-Push wird automatisch geöffnet auf `ws://192.168.115.177:8989/ws/prod`
 
 ## Verzeichnisstruktur
 
@@ -120,7 +120,7 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/kiosk/privkey.pem;
 
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:8989;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";

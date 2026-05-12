@@ -10,7 +10,7 @@ set -e
 INSTALL_DIR="/opt/kiosk-mda"
 SERVICE_USER="kiosk"
 ENV_FILE="/etc/kiosk-mda.env"
-PORT="${PORT:-3000}"
+PORT="${PORT:-8989}"
 
 echo "==> Kiosk-MDA-Server Installation"
 
