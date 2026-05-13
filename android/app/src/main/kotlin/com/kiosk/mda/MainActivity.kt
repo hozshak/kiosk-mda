@@ -409,12 +409,15 @@ class MainActivity : AppCompatActivity() {
             setImeWithHardKeyboard(newState)
 
             if (newState) {
-                // Versuche OSK zu öffnen, aber NUR auf das aktuell fokussierte Feld -
-                // requestFocus auf die WebView ohne HTML-Input fokussiert würde dazu führen
-                // dass Tastatur-Input ins Leere geht.
-                imm.showSoftInput(binding.webView, 0)
+                // toggleSoftInput zeigt die IME "floating" - ohne fokussierten Editor.
+                // User tippt dann auf HTML-Feld, das bekommt Fokus, IME bleibt offen,
+                // Tippen geht in das HTML-Feld weil dessen InputConnection aktiv ist.
+                @Suppress("DEPRECATION")
+                imm.toggleSoftInput(android.view.inputmethod.InputMethodManager.SHOW_FORCED, 0)
             } else {
                 imm.hideSoftInputFromWindow(binding.webView.windowToken, 0)
+                @Suppress("DEPRECATION")
+                imm.toggleSoftInput(0, android.view.inputmethod.InputMethodManager.HIDE_IMPLICIT_ONLY)
             }
 
             val label = if (newState) {
