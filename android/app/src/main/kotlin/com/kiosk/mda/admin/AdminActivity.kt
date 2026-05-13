@@ -62,6 +62,7 @@ class AdminActivity : AppCompatActivity() {
             BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE
         )
         binding.btnCheckUpdate.setOnClickListener { checkForUpdate() }
+        binding.btnInputDiag.setOnClickListener { loadInputDiag() }
 
         binding.chipExample1.setOnClickListener {
             binding.txtTestUrl.setText("https://duckduckgo.com")
@@ -101,6 +102,14 @@ class AdminActivity : AppCompatActivity() {
         binding.txtWriteSettingsStatus.text =
             "${getString(com.kiosk.mda.R.string.admin_permission_write_settings)}: $statusText"
         binding.btnGrantWriteSettings.isEnabled = !granted
+    }
+
+    private fun loadInputDiag() {
+        if (!pinVerified) return
+        // Setze TestStartUrl auf die App-Asset-URL und schließe Admin
+        repo.setTestStartUrl("file:///android_asset/diag/input-test.html")
+        Toast.makeText(this, "Lade Diagnose-Seite…", Toast.LENGTH_SHORT).show()
+        finish()
     }
 
     private fun checkForUpdate() {

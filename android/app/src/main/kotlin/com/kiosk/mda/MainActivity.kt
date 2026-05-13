@@ -106,7 +106,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        // KEIN setDecorFitsSystemWindows(false) - das brach WebView-Input
+        // auf manchen PDAs (Edge-to-Edge stört IME-Routing).
         enableImmersive()
         enableLockTaskIfDeviceOwner()
 
@@ -251,7 +252,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) enableImmersive()
+        // Wir rufen enableImmersive NICHT erneut bei jedem focus-change auf,
+        // weil das beim IME-Öffnen Focus-Stealing verursachen kann.
+        // STICKY-Mode in WindowInsetsControllerCompat regelt das automatisch.
     }
 
     private fun observeConfig() {
@@ -370,6 +373,14 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onPermissionRequestCanceled(request: PermissionRequest) {
                     if (pendingWebPermission === request) pendingWebPermission = null
+                }
+
+                override fun onConsoleMessage(msg: android.webkit.ConsoleMessage): Boolean {
+                    Log.d(
+                        "KioskJS",
+                        "[${msg.messageLevel()}] ${msg.message()} @ ${msg.sourceId()}:${msg.lineNumber()}"
+                    )
+                    return true
                 }
             }
         }
