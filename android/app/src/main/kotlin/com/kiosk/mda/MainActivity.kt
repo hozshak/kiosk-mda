@@ -15,8 +15,14 @@ import android.view.View
 import android.view.WindowManager
 import android.provider.Settings
 import android.util.Log
+import android.net.http.SslError
 import android.webkit.CookieManager
+import android.webkit.SslErrorHandler
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -232,6 +238,7 @@ class MainActivity : AppCompatActivity() {
         binding.webView.apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            settings.databaseEnabled = true
             settings.allowFileAccess = false
             settings.allowContentAccess = false
             settings.allowFileAccessFromFileURLs = false
@@ -239,11 +246,77 @@ class MainActivity : AppCompatActivity() {
             settings.mediaPlaybackRequiresUserGesture = false
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
+            // HTTP-Ressourcen in HTTPS-Seiten erlauben (interner Kiosk)
+            settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
-            webViewClient = WebViewClient()
+            webViewClient = object : WebViewClient() {
+                override fun onReceivedSslError(
+                    view: WebView, handler: SslErrorHandler, error: SslError
+                ) {
+                    // Self-signed / internal Certs akzeptieren (Kiosk in geschütztem Netz)
+                    Log.w("Kiosk", "SSL error for ${error.url}: code=${error.primaryError}, proceeding")
+                    handler.proceed()
+                }
+
+                override fun onReceivedError(
+                    view: WebView, request: WebResourceRequest, error: WebResourceError
+                ) {
+                    if (!request.isForMainFrame) return
+                    Log.e("Kiosk", "Load error ${error.errorCode} for ${request.url}: ${error.description}")
+                    showErrorPage(view, request.url.toString(), error.description.toString(), error.errorCode)
+                }
+
+                override fun onReceivedHttpError(
+                    view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse
+                ) {
+                    if (!request.isForMainFrame) return
+                    Log.e("Kiosk", "HTTP error ${errorResponse.statusCode} for ${request.url}")
+                    showErrorPage(
+                        view,
+                        request.url.toString(),
+                        errorResponse.reasonPhrase ?: "HTTP error",
+                        errorResponse.statusCode
+                    )
+                }
+            }
             webChromeClient = WebChromeClient()
         }
         CookieManager.getInstance().setAcceptCookie(true)
+    }
+
+    private fun showErrorPage(view: WebView, url: String, message: String, code: Int) {
+        val escapedUrl = url.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        val escapedMsg = message.replace("<", "&lt;").replace(">", "&gt;")
+        val html = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body { font-family: system-ui, sans-serif; background: #1a1f29; color: #e6e8eb;
+                           padding: 32px; line-height: 1.6; }
+                    .box { max-width: 600px; margin: 0 auto; background: #252b38; padding: 24px;
+                           border-radius: 12px; border-left: 4px solid #e54b4b; }
+                    h1 { font-size: 20px; margin-bottom: 8px; color: #ff6b6b; }
+                    .code { font-family: monospace; background: #0f1419; padding: 2px 8px;
+                            border-radius: 4px; color: #4da3ff; }
+                    .url { word-break: break-all; opacity: 0.8; font-size: 13px; margin-top: 12px; }
+                    button { background: #4da3ff; color: white; border: none; padding: 10px 18px;
+                             border-radius: 6px; margin-top: 16px; cursor: pointer; font-size: 14px; }
+                </style>
+            </head>
+            <body>
+                <div class="box">
+                    <h1>Seite konnte nicht geladen werden</h1>
+                    <p><span class="code">$code</span> $escapedMsg</p>
+                    <div class="url">$escapedUrl</div>
+                    <button onclick="location.reload()">Erneut versuchen</button>
+                </div>
+            </body>
+            </html>
+        """.trimIndent()
+        view.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
     }
 
     private fun setupOskToggle() {
