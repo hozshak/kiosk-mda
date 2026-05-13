@@ -71,6 +71,24 @@
                         JavaScript erlauben
                     </label>
                 </div>
+
+                <h2 style="margin-top:24px;">On-Screen-Keyboard (OSK)</h2>
+                <p class="subtitle">Steuert ob die Bildschirm-Tastatur erscheint wenn Felder fokussiert werden. Scanner-Eingaben (HID) funktionieren in allen Modi.</p>
+                <div class="field">
+                    <label>OSK-Modus</label>
+                    <select id="cfg-osk-mode">
+                        <option value="off">Aus (für Scanner-Workflow)</option>
+                        <option value="auto" selected>Auto (nur bei Passwort-Feldern)</option>
+                        <option value="on">An (normales WebView-Verhalten)</option>
+                    </select>
+                    <small><strong>Auto</strong> erkennt <code>&lt;input type="password"&gt;</code> und Felder mit <code>data-osk="enabled"</code>.</small>
+                </div>
+                <div class="row">
+                    <label class="checkbox">
+                        <input type="checkbox" id="cfg-osk-toggle" checked />
+                        Toggle-Button bottom-right anzeigen
+                    </label>
+                </div>
                 <div class="status-bar">
                     <span id="config-status">Aktive Verbindungen: <strong id="active-count">0</strong></span>
                     <button id="btn-push" class="primary">Speichern + an Geräte pushen</button>

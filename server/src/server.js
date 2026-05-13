@@ -98,6 +98,8 @@ function defaultConfigXml(env) {
         </bookmarks>
         <clearCacheOnExit>false</clearCacheOnExit>
         <javaScriptEnabled>true</javaScriptEnabled>
+        <oskMode>auto</oskMode>
+        <oskToggleVisible>true</oskToggleVisible>
     </browser>
     <device>
         <orientation>auto</orientation>

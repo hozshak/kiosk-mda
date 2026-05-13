@@ -53,6 +53,8 @@ object ConfigParser {
         var startUrl = "about:blank"
         var clearCache = false
         var jsEnabled = true
+        var oskMode = "auto"
+        var oskToggleVisible = true
         val bookmarks = mutableListOf<Bookmark>()
 
         var event = parser.next()
@@ -62,12 +64,14 @@ object ConfigParser {
                     "startUrl" -> startUrl = readText(parser).trim()
                     "clearCacheOnExit" -> clearCache = readText(parser).trim().toBoolean()
                     "javaScriptEnabled" -> jsEnabled = readText(parser).trim().toBoolean()
+                    "oskMode" -> oskMode = readText(parser).trim().lowercase().ifBlank { "auto" }
+                    "oskToggleVisible" -> oskToggleVisible = readText(parser).trim().toBoolean()
                     "bookmarks" -> bookmarks.addAll(parseBookmarks(parser))
                 }
             }
             event = parser.next()
         }
-        return BrowserConfig(startUrl, bookmarks, clearCache, jsEnabled)
+        return BrowserConfig(startUrl, bookmarks, clearCache, jsEnabled, oskMode, oskToggleVisible)
     }
 
     private fun parseBookmarks(parser: XmlPullParser): List<Bookmark> {

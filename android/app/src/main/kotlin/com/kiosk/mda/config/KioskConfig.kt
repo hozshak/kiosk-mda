@@ -18,7 +18,9 @@ data class KioskConfig(
                 startUrl = "about:blank",
                 bookmarks = emptyList(),
                 clearCacheOnExit = false,
-                javaScriptEnabled = true
+                javaScriptEnabled = true,
+                oskMode = "auto",
+                oskToggleVisible = true
             ),
             device = DeviceConfig(
                 orientation = Orientation.AUTO,
@@ -37,7 +39,9 @@ data class BrowserConfig(
     val startUrl: String,
     val bookmarks: List<Bookmark>,
     val clearCacheOnExit: Boolean,
-    val javaScriptEnabled: Boolean
+    val javaScriptEnabled: Boolean,
+    val oskMode: String = "auto",
+    val oskToggleVisible: Boolean = true
 )
 
 data class Bookmark(

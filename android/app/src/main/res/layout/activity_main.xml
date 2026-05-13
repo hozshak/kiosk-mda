@@ -7,7 +7,7 @@
     android:background="@android:color/black"
     android:fitsSystemWindows="false">
 
-    <WebView
+    <com.kiosk.mda.KioskWebView
         android:id="@+id/webView"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -58,6 +58,23 @@
         android:elevation="21dp"
         android:background="@drawable/admin_dot"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- OSK-Toggle-Button bottom-right (sichtbar/unsichtbar gesteuert via Config) -->
+    <ImageButton
+        android:id="@+id/oskToggle"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:padding="10dp"
+        android:elevation="20dp"
+        android:background="@drawable/osk_button_bg"
+        android:src="@drawable/ic_keyboard_off"
+        android:scaleType="fitCenter"
+        android:contentDescription="@string/osk_toggle_desc"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -82,6 +82,8 @@ function parseXml(xml) {
             bookmarks,
             clearCacheOnExit: text('browser clearCacheOnExit').toLowerCase() === 'true',
             javaScriptEnabled: text('browser javaScriptEnabled').toLowerCase() !== 'false',
+            oskMode: (text('browser oskMode') || 'auto').toLowerCase(),
+            oskToggleVisible: text('browser oskToggleVisible').toLowerCase() !== 'false',
         },
         device: {
             orientation: text('device orientation') || 'auto',
@@ -111,6 +113,8 @@ ${bookmarks}
         </bookmarks>
         <clearCacheOnExit>${cfg.browser.clearCacheOnExit ? 'true' : 'false'}</clearCacheOnExit>
         <javaScriptEnabled>${cfg.browser.javaScriptEnabled ? 'true' : 'false'}</javaScriptEnabled>
+        <oskMode>${esc(cfg.browser.oskMode || 'auto')}</oskMode>
+        <oskToggleVisible>${cfg.browser.oskToggleVisible !== false ? 'true' : 'false'}</oskToggleVisible>
     </browser>
     <device>
         <orientation>${esc(cfg.device.orientation)}</orientation>
@@ -150,6 +154,8 @@ function populateForm() {
     $('#cfg-start-url').value = currentConfig.browser.startUrl;
     $('#cfg-clear-cache').checked = currentConfig.browser.clearCacheOnExit;
     $('#cfg-js-enabled').checked = currentConfig.browser.javaScriptEnabled;
+    $('#cfg-osk-mode').value = currentConfig.browser.oskMode || 'auto';
+    $('#cfg-osk-toggle').checked = currentConfig.browser.oskToggleVisible !== false;
     $('#cfg-orientation').value = currentConfig.device.orientation;
     $('#cfg-display-timeout').value = currentConfig.device.displayTimeout;
     $('#cfg-pin').value = '';
@@ -185,6 +191,8 @@ async function saveAndPush() {
     currentConfig.browser.startUrl = $('#cfg-start-url').value.trim();
     currentConfig.browser.clearCacheOnExit = $('#cfg-clear-cache').checked;
     currentConfig.browser.javaScriptEnabled = $('#cfg-js-enabled').checked;
+    currentConfig.browser.oskMode = $('#cfg-osk-mode').value;
+    currentConfig.browser.oskToggleVisible = $('#cfg-osk-toggle').checked;
     currentConfig.device.orientation = $('#cfg-orientation').value;
     currentConfig.device.displayTimeout = parseInt($('#cfg-display-timeout').value || '0', 10);
 
