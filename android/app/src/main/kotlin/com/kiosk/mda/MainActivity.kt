@@ -464,21 +464,24 @@ class MainActivity : AppCompatActivity() {
             binding.webView.oskEnabled = newState
             updateOskToggleIcon()
 
-            // Steuere systemweite Einstellung "Bildschirm-Tastatur trotz Hardware-Tastatur":
-            //   neuer Wert = true  -> setze auf 1 (OSK darf trotz Scanner-HID erscheinen)
-            //   neuer Wert = false -> setze auf 0 (System unterdrückt OSK weil HID-Keyboard)
-            // Klappt nur mit WRITE_SECURE_SETTINGS - sonst silent no-op.
+            // System-Setting setzen (klappt nur mit WRITE_SECURE_SETTINGS, sonst no-op)
             setImeWithHardKeyboard(newState)
 
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE)
                 as android.view.inputmethod.InputMethodManager
 
-            if (!newState) {
-                // OSK aus: aktive Tastatur schließen
+            if (newState) {
+                // Force-Show als Fallback wenn show_ime_with_hard_keyboard nicht gegranted
+                // werden konnte. toggleSoftInput(SHOW_FORCED) zeigt die IME ohne View-Override
+                // - User tippt dann auf HTML-Feld, WebView's eigene InputConnection routet
+                // Tipps korrekt ins Feld.
+                @Suppress("DEPRECATION")
+                imm.toggleSoftInput(android.view.inputmethod.InputMethodManager.SHOW_FORCED, 0)
+            } else {
                 imm.hideSoftInputFromWindow(binding.webView.windowToken, 0)
+                @Suppress("DEPRECATION")
+                imm.toggleSoftInput(0, android.view.inputmethod.InputMethodManager.HIDE_IMPLICIT_ONLY)
             }
-            // OSK an: KEIN forciertes showSoftInput - das User-Tippen in ein Feld
-            // löst die OSK natürlich aus (jetzt erlaubt durch das System-Setting).
 
             val label = if (newState) {
                 getString(R.string.osk_mode_on) + " - tippe ins Eingabefeld"
