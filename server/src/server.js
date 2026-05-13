@@ -61,6 +61,10 @@ app.get('/admin/*', (c) => {
   return serveFile(c, file);
 });
 
+// Diagnose-Seite (public, kein Login)
+app.get('/diag.html', (c) => serveFile(c, join(publicDir, 'diag.html')));
+app.get('/diag', (c) => c.redirect('/diag.html'));
+
 const api = buildRouter();
 app.route('/', api);
 

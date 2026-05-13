@@ -581,6 +581,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // Diagnose-Log: alles was an dispatch ankommt - via `adb logcat -s KioskKey` lesbar
+        Log.d(
+            "KioskKey",
+            "action=${event.action} code=${event.keyCode} uni=${event.unicodeChar} " +
+                "src=${event.source} dev=${event.deviceId} flags=${event.flags}"
+        )
         return when (event.keyCode) {
             KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_UP -> super.dispatchKeyEvent(event)
             KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_APP_SWITCH -> true

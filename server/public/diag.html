@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eingabe-Diagnose</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+        body { background:#0f1419; color:#e6e8eb; padding:20px; }
+        h1 { color:#4da3ff; font-size:20px; margin-bottom:16px; }
+        .grp { background:#1a1f29; border:1px solid #2e3441; border-radius:8px; padding:16px; margin-bottom:14px; }
+        label { display:block; font-size:12px; opacity:0.7; margin-bottom:4px; text-transform:uppercase; }
+        input { width:100%; padding:12px; background:#252b38; border:1px solid #2e3441; color:#e6e8eb;
+                border-radius:6px; font-size:16px; }
+        input:focus { outline: 2px solid #4da3ff; }
+        .events { background:#000; color:#80ff80; font-family:monospace; font-size:11px;
+                  padding:12px; border-radius:6px; max-height:200px; overflow-y:auto;
+                  white-space:pre; line-height:1.5; }
+        .meta { color:#888; font-size:12px; margin-top:4px; }
+        button { background:#4da3ff; color:white; border:0; padding:10px 18px; border-radius:6px;
+                 cursor:pointer; margin-top:8px; }
+    </style>
+</head>
+<body>
+    <h1>Tastatur-Diagnose</h1>
+
+    <div class="grp">
+        <label>Benutzername (input type="text")</label>
+        <input type="text" id="user" autocomplete="off" autocapitalize="off" />
+        <div class="meta" id="user-meta">leer</div>
+    </div>
+
+    <div class="grp">
+        <label>Passwort (input type="password")</label>
+        <input type="password" id="pw" autocomplete="off" />
+        <div class="meta" id="pw-meta">leer</div>
+    </div>
+
+    <div class="grp">
+        <label>Such-Feld (inputmode="search")</label>
+        <input type="search" id="search" />
+        <div class="meta" id="search-meta">leer</div>
+    </div>
+
+    <div class="grp">
+        <label>Nummer (input type="number")</label>
+        <input type="number" id="num" />
+        <div class="meta" id="num-meta">leer</div>
+    </div>
+
+    <div class="grp">
+        <label>Event-Log (input + keydown + keyup + composition)</label>
+        <div class="events" id="log"></div>
+        <button onclick="document.getElementById('log').textContent=''">Log leeren</button>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        function add(line) {
+            log.textContent += line + '\n';
+            log.scrollTop = log.scrollHeight;
+        }
+        ['user','pw','search','num'].forEach(id => {
+            const el = document.getElementById(id);
+            el.addEventListener('input', e => {
+                document.getElementById(id+'-meta').textContent = `${e.target.value.length} Zeichen: "${e.target.value}"`;
+                add(`[input    ] ${id} -> "${e.target.value}"`);
+            });
+            el.addEventListener('keydown', e => {
+                add(`[keydown  ] ${id} key="${e.key}" code=${e.code} which=${e.which}`);
+            });
+            el.addEventListener('keyup', e => {
+                add(`[keyup    ] ${id} key="${e.key}"`);
+            });
+            el.addEventListener('compositionstart', e => add(`[compstart] ${id} data="${e.data}"`));
+            el.addEventListener('compositionupdate', e => add(`[compupd  ] ${id} data="${e.data}"`));
+            el.addEventListener('compositionend', e => add(`[compend  ] ${id} data="${e.data}"`));
+            el.addEventListener('focus', () => add(`[focus    ] ${id}`));
+            el.addEventListener('blur', () => add(`[blur     ] ${id}`));
+        });
+        add('=== bereit, tippe in eines der Felder ===');
+    </script>
+</body>
+</html>

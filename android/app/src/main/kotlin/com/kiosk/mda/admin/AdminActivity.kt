@@ -106,9 +106,14 @@ class AdminActivity : AppCompatActivity() {
 
     private fun loadInputDiag() {
         if (!pinVerified) return
-        // Setze TestStartUrl auf die App-Asset-URL und schließe Admin
-        repo.setTestStartUrl("file:///android_asset/diag/input-test.html")
-        Toast.makeText(this, "Lade Diagnose-Seite…", Toast.LENGTH_SHORT).show()
+        // Server-URL ableiten aus Config (z.B. http://192.168.115.177:8989/config/prod -> /diag.html)
+        val configUrl = repo.effectiveConfigUrl()
+        val idx = configUrl.indexOf("/config/")
+        val diagUrl = if (idx > 0) configUrl.substring(0, idx) + "/diag.html"
+        else "file:///android_asset/diag/input-test.html"
+
+        repo.setTestStartUrl(diagUrl)
+        Toast.makeText(this, "Lade Diagnose-Seite: $diagUrl", Toast.LENGTH_LONG).show()
         finish()
     }
 
