@@ -11,8 +11,8 @@ android {
         applicationId = "com.kiosk.mda"
         minSdk = 24
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.1.4"
+        versionCode = 7
+        versionName = "1.1.5"
 
         buildConfigField("String", "DEFAULT_CONFIG_URL", "\"http://192.168.115.177:8989/config/prod\"")
     }

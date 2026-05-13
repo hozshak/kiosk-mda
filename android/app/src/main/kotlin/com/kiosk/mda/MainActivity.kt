@@ -33,6 +33,7 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -109,6 +110,7 @@ class MainActivity : AppCompatActivity() {
         // KEIN setDecorFitsSystemWindows(false) - das brach WebView-Input
         // auf manchen PDAs (Edge-to-Edge stört IME-Routing).
         enableImmersive()
+        setupOskSuppression()
         enableLockTaskIfDeviceOwner()
 
         setupWebView()
@@ -550,6 +552,25 @@ class MainActivity : AppCompatActivity() {
 
     private fun openAdmin() {
         startActivity(Intent(this, com.kiosk.mda.admin.AdminActivity::class.java))
+    }
+
+    /**
+     * Wenn OSK aus: jedes Mal wenn die System-IME hochpoppt (z.B. weil WebView den
+     * Focus auf ein Eingabefeld setzt) sofort wieder ausblenden.
+     * Minimale Logik - kein Padding, kein Resize, nur Hide.
+     */
+    private fun setupOskSuppression() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            if (imeVisible && !binding.webView.oskEnabled) {
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE)
+                    as android.view.inputmethod.InputMethodManager
+                binding.webView.post {
+                    imm.hideSoftInputFromWindow(binding.webView.windowToken, 0)
+                }
+            }
+            insets
+        }
     }
 
     private fun enableImmersive() {
