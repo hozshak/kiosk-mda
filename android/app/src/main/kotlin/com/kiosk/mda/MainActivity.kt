@@ -1,5 +1,6 @@
 package com.kiosk.mda
 
+import android.annotation.SuppressLint
 import android.app.admin.DevicePolicyManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -253,16 +254,52 @@ class MainActivity : AppCompatActivity() {
 
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE)
                 as android.view.inputmethod.InputMethodManager
+
             if (newState) {
-                // Direkt aufmachen, damit User sofort tippen kann
+                // 1. Versuche show_ime_with_hard_keyboard zu setzen (oft per Default
+                //    auf PDAs mit Scanner-HID aus -> Soft-Keyboard wird sonst unterdrückt)
+                ensureImeWithHardKeyboardEnabled()
+                // 2. WebView fokussieren
                 binding.webView.requestFocus()
+                // 3. showSoftInput - normalerweise via FORCED am zuverlässigsten,
+                //    auch wenn deprecated
+                @Suppress("DEPRECATION")
                 imm.showSoftInput(binding.webView, android.view.inputmethod.InputMethodManager.SHOW_FORCED)
-                imm.showSoftInput(binding.webView, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                // 4. Fallback: toggleSoftInput zwingt das System die IME zu zeigen
+                @Suppress("DEPRECATION")
+                imm.toggleSoftInput(android.view.inputmethod.InputMethodManager.SHOW_FORCED, 0)
             } else {
                 imm.hideSoftInputFromWindow(binding.webView.windowToken, 0)
+                @Suppress("DEPRECATION")
+                imm.toggleSoftInput(0, android.view.inputmethod.InputMethodManager.HIDE_IMPLICIT_ONLY)
             }
             val label = if (newState) getString(R.string.osk_mode_on) else getString(R.string.osk_mode_off)
             Toast.makeText(this, label, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Schaltet "Bildschirm-Tastatur trotz Hardware-Tastatur anzeigen" ein.
+     * Auf PDAs (Zebra/Scanner) klassifiziert Android den Scanner oft als HID-Keyboard
+     * und unterdrückt dann standardmäßig die Soft-Tastatur. Diese Settings.Secure
+     * Einstellung überschreibt das. Funktioniert nur als Device-Owner oder mit
+     * WRITE_SECURE_SETTINGS (signature permission) - sonst schlucken wir die Exception.
+     */
+    @SuppressLint("WrongConstant")
+    private fun ensureImeWithHardKeyboardEnabled() {
+        try {
+            val current = android.provider.Settings.Secure.getInt(
+                contentResolver, "show_ime_with_hard_keyboard", 0
+            )
+            if (current == 0) {
+                android.provider.Settings.Secure.putInt(
+                    contentResolver, "show_ime_with_hard_keyboard", 1
+                )
+            }
+        } catch (_: SecurityException) {
+            // Keine Permission - User muss in den System-Settings manuell aktivieren:
+            // Einstellungen -> Sprachen/Eingabe -> Physische Tastatur -> Bildschirm-Tastatur anzeigen
+        } catch (_: Exception) {
         }
     }
 

@@ -8,14 +8,12 @@ import android.webkit.WebView
 /**
  * WebView mit oskEnabled-Flag.
  *
- * Tatsächliches Blocken der Bildschirm-Tastatur passiert in MainActivity über
- * einen WindowInsets-Listener (siehe MainActivity.setupImeBlocker). Grund:
- * Die Chromium-WebView ruft InputMethodManager.showSoftInput() intern direkt
- * über ihren ImeAdapter auf - View-Override-Hooks (onCheckIsTextEditor,
- * onCreateInputConnection) werden dabei umgangen.
+ * onCheckIsTextEditor wird überschrieben um beim Toggle "ich bin ein Text-Editor"
+ * zu signalisieren - sonst zeigt das System keine IME wenn keine input-Element im
+ * Web-Content fokussiert ist.
  *
- * Der WindowInsets-Listener fängt das IME beim Aufpoppen und blendet es wieder
- * aus wenn oskEnabled=false. Robust gegen alle WebView-Implementierungen.
+ * Tatsächliches Verhalten beim Auto-Show wird in MainActivity via WindowInsets-
+ * Listener gesteuert.
  */
 class KioskWebView @JvmOverloads constructor(
     context: Context,
@@ -29,6 +27,12 @@ class KioskWebView @JvmOverloads constructor(
             field = value
             if (!value) hideSoftKeyboard()
         }
+
+    override fun onCheckIsTextEditor(): Boolean {
+        // Wenn OSK an: behaupte "Text-Editor" damit das System bereit ist die IME zu zeigen.
+        // Wenn aus: Default-Verhalten des WebView (true nur bei fokussiertem input).
+        return oskEnabled || super.onCheckIsTextEditor()
+    }
 
     private fun hideSoftKeyboard() {
         try {
