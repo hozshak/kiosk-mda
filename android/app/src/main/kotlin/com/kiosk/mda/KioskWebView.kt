@@ -1,26 +1,21 @@
 package com.kiosk.mda
 
 import android.content.Context
-import android.text.InputType
 import android.util.AttributeSet
-import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.webkit.WebView
 
 /**
- * WebView mit On-Screen-Keyboard-Kontrolle.
+ * WebView mit oskEnabled-Flag.
  *
- * oskEnabled = false (default): Die System-Soft-Keyboard erscheint NICHT wenn Felder
- *   in der Webseite fokussiert werden. HID-Tastatur-Eingaben (Barcode-Scanner) bleiben
- *   funktional weil sie als KeyEvent kommen, nicht über InputConnection.
+ * Tatsächliches Blocken der Bildschirm-Tastatur passiert in MainActivity über
+ * einen WindowInsets-Listener (siehe MainActivity.setupImeBlocker). Grund:
+ * Die Chromium-WebView ruft InputMethodManager.showSoftInput() intern direkt
+ * über ihren ImeAdapter auf - View-Override-Hooks (onCheckIsTextEditor,
+ * onCreateInputConnection) werden dabei umgangen.
  *
- * oskEnabled = true: normales WebView-Verhalten, OSK öffnet sich.
- *
- * Implementierung:
- *  - onCheckIsTextEditor() entscheidet ob System uns überhaupt InputConnection anfragt
- *  - onCreateInputConnection als zusätzlicher Block (setzt TYPE_NULL falls doch aufgerufen)
- *  - imm.restartInput() bei Modus-Wechsel zwingt Re-Evaluation
+ * Der WindowInsets-Listener fängt das IME beim Aufpoppen und blendet es wieder
+ * aus wenn oskEnabled=false. Robust gegen alle WebView-Implementierungen.
  */
 class KioskWebView @JvmOverloads constructor(
     context: Context,
@@ -32,35 +27,13 @@ class KioskWebView @JvmOverloads constructor(
         set(value) {
             if (field == value) return
             field = value
-            restartImeInput()
+            if (!value) hideSoftKeyboard()
         }
 
-    override fun onCheckIsTextEditor(): Boolean {
-        // Wenn false, fragt das System gar nicht erst nach InputConnection
-        // und das Soft-Keyboard erscheint nie.
-        return oskEnabled
-    }
-
-    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
-        val ic = super.onCreateInputConnection(outAttrs)
-        if (!oskEnabled) {
-            // Zweite Verteidigungslinie falls das System trotz onCheckIsTextEditor=false
-            // doch fragt: TYPE_NULL = keine Soft-Tastatur.
-            outAttrs.inputType = InputType.TYPE_NULL
-            outAttrs.imeOptions = EditorInfo.IME_ACTION_NONE
-        }
-        return ic
-    }
-
-    private fun restartImeInput() {
+    private fun hideSoftKeyboard() {
         try {
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            if (oskEnabled) {
-                imm.restartInput(this)
-            } else {
-                imm.hideSoftInputFromWindow(windowToken, 0)
-                imm.restartInput(this)
-            }
+            imm.hideSoftInputFromWindow(windowToken, 0)
         } catch (_: Exception) {
         }
     }

@@ -23,6 +23,7 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -63,6 +64,7 @@ class MainActivity : AppCompatActivity() {
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableImmersive()
+        setupImeBlocker()
         enableLockTaskIfDeviceOwner()
 
         setupWebView()
@@ -280,6 +282,25 @@ class MainActivity : AppCompatActivity() {
 
     private fun openAdmin() {
         startActivity(Intent(this, com.kiosk.mda.admin.AdminActivity::class.java))
+    }
+
+    /**
+     * Fängt das System-IME ab sobald es erscheint und blendet es wieder aus,
+     * solange oskEnabled=false. WebView (Chromium) ruft showSoftInput intern auf
+     * - View-Overrides reichen nicht. WindowInsets ist die zuverlässige Schiene.
+     */
+    private fun setupImeBlocker() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            if (imeVisible && !binding.webView.oskEnabled) {
+                v.post {
+                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE)
+                        as android.view.inputmethod.InputMethodManager
+                    imm.hideSoftInputFromWindow(binding.webView.windowToken, 0)
+                }
+            }
+            insets
+        }
     }
 
     private fun enableImmersive() {
