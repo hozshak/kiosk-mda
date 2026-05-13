@@ -139,6 +139,7 @@ class PushClient(private val context: Context) {
             val json = JSONObject(text)
             when (json.optString("type")) {
                 "config-updated" -> triggerConfigSync()
+                "apk-update" -> triggerApkUpdateCheck()
                 "connected" -> Log.i(TAG, "server confirmed connection")
                 "hello-ack" -> Log.i(TAG, "server acknowledged hello")
                 "pong" -> {}
@@ -146,6 +147,11 @@ class PushClient(private val context: Context) {
         } catch (e: Exception) {
             Log.w(TAG, "bad message: ${e.message}")
         }
+    }
+
+    private fun triggerApkUpdateCheck() {
+        val intent = android.content.Intent("com.kiosk.mda.APK_UPDATE").setPackage(context.packageName)
+        context.sendBroadcast(intent)
     }
 
     private fun triggerConfigSync() {

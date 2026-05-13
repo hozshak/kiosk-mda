@@ -4,6 +4,7 @@ import { broadcast, stats, allStats } from './ws.js';
 import { requireAuth, verifyCredentials, createSession, destroySession } from './auth.js';
 import { listDevices, logAudit } from './db.js';
 import { createHash } from 'node:crypto';
+import { buildApkRouter, buildApkAdminRouter } from './apk.js';
 
 const VALID_ENVS = new Set(['test', 'prod']);
 
@@ -133,7 +134,12 @@ export function buildRouter() {
     return c.json({ devices: listDevices() });
   });
 
+  // APK-Admin-Routes unter /api/apk/*
+  api.route('/apk', buildApkAdminRouter());
   app.route('/api', api);
+
+  // Public APK-Routes unter /apk/* (latest.json + download)
+  app.route('/apk', buildApkRouter());
 
   return app;
 }

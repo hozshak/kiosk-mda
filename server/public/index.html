@@ -50,6 +50,7 @@
                 <button class="tab" data-tab="device">Geräte-Einstellungen</button>
                 <button class="tab" data-tab="security">Sicherheit</button>
                 <button class="tab" data-tab="devices">Geräte (<span id="devices-count">0</span>)</button>
+                <button class="tab" data-tab="apk">App-Update</button>
                 <button class="tab" data-tab="raw">XML</button>
             </nav>
 
@@ -165,6 +166,39 @@
                     </thead>
                     <tbody id="devices-body"></tbody>
                 </table>
+            </section>
+
+            <!-- APK Tab -->
+            <section class="tab-content" data-tab="apk">
+                <h2>App-Update verteilen</h2>
+                <p class="subtitle">Lade eine neue APK hoch. Alle verbundenen Geräte bekommen sofort einen Push und der User wird zum Update aufgefordert.</p>
+
+                <div class="field">
+                    <label>Aktuelle Version auf dem Server</label>
+                    <div id="apk-current-info" style="font-family:monospace;font-size:13px;color:var(--text-dim);padding:8px 0;">
+                        — keine APK hochgeladen —
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Neue APK hochladen</label>
+                    <div class="row">
+                        <input type="number" id="apk-version-code" placeholder="versionCode (Integer, z.B. 2)" style="flex:0 0 220px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;" />
+                        <input type="text" id="apk-version-name" placeholder="versionName (z.B. 1.1.0)" style="flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;" />
+                    </div>
+                    <input type="file" id="apk-file-input" accept=".apk,application/vnd.android.package-archive" style="margin-top:10px;display:block;color:var(--text-dim);" />
+                </div>
+
+                <div class="status-bar">
+                    <span id="apk-upload-status"></span>
+                    <button id="btn-apk-upload" class="primary">Upload + Push</button>
+                </div>
+
+                <h2 style="margin-top:32px;">Server-Endpoints</h2>
+                <div class="field">
+                    <label>Geräte holen Update-Info von</label>
+                    <code id="apk-endpoint-latest" style="display:block;padding:8px;background:var(--surface-2);border-radius:6px;font-size:13px;color:var(--accent);"></code>
+                </div>
             </section>
 
             <!-- Raw XML Tab -->

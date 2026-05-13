@@ -4,6 +4,7 @@ import { initDb } from './db.js';
 import { initStorage, readConfig, writeConfig } from './storage.js';
 import { initAuth } from './auth.js';
 import { initWebSocket } from './ws.js';
+import { initApkStore } from './apk.js';
 import { buildRouter } from './routes.js';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -26,6 +27,7 @@ if (ADMIN_PASSWORD === 'admin') {
 mkdirSync(DATA_DIR, { recursive: true });
 initDb(join(DATA_DIR, 'kiosk.db'));
 initStorage(DATA_DIR);
+initApkStore(DATA_DIR);
 initAuth({ user: ADMIN_USER, password: ADMIN_PASSWORD });
 
 // Default-Configs anlegen falls leer

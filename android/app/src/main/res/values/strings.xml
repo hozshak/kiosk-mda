@@ -29,6 +29,11 @@
     <string name="admin_btn_pick_now">Launcher-Auswahl erzwingen</string>
     <string name="admin_launcher_help">Damit Kiosk MDA als Default-Launcher gesetzt werden kann, muss zuerst der bestehende Default zurückgesetzt werden. Tippe auf "Zurücksetzen" → in der App-Info auf "Standardmäßig öffnen" → "Standardeinstellungen löschen". Dann HOME-Taste drücken → Kiosk MDA wählen.</string>
 
+    <string name="admin_section_update">App-Update</string>
+    <string name="admin_btn_check_update">Auf Update prüfen</string>
+    <string name="admin_current_version">Installierte Version: %1$s (Build %2$d)</string>
+    <string name="admin_update_none">Keine neuere Version verfügbar</string>
+
     <string name="admin_section_permissions">Berechtigungen</string>
     <string name="admin_permission_write_settings">Display-Timeout-Steuerung (WRITE_SETTINGS)</string>
     <string name="admin_permission_granted">erteilt</string>
@@ -38,6 +43,13 @@
     <string name="osk_toggle_desc">Bildschirm-Tastatur umschalten</string>
     <string name="osk_mode_off">Bildschirm-Tastatur aus</string>
     <string name="osk_mode_on">Bildschirm-Tastatur an</string>
+
+    <string name="update_available">Neue Version verfügbar: %1$s (Build %2$d)</string>
+    <string name="update_install">Installieren</string>
+    <string name="update_later">Später</string>
+    <string name="update_downloading">Lade Update herunter…</string>
+    <string name="update_download_failed">Download fehlgeschlagen</string>
+    <string name="update_install_permission_required">App-Install muss erlaubt werden — bitte in Einstellungen aktivieren</string>
 
     <string name="admin_section_server">Server-Config</string>
     <string name="admin_btn_sync">Config jetzt synchronisieren</string>

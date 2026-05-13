@@ -10,8 +10,11 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.kiosk.mda.BuildConfig
 import com.kiosk.mda.config.ConfigRepository
 import com.kiosk.mda.databinding.ActivityAdminBinding
+import com.kiosk.mda.update.UpdateChecker
+import com.kiosk.mda.update.UpdateInstaller
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
 
@@ -53,6 +56,13 @@ class AdminActivity : AppCompatActivity() {
         // Berechtigungen
         binding.btnGrantWriteSettings.setOnClickListener { requestWriteSettings() }
 
+        // Update
+        binding.txtCurrentVersion.text = getString(
+            com.kiosk.mda.R.string.admin_current_version,
+            BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE
+        )
+        binding.btnCheckUpdate.setOnClickListener { checkForUpdate() }
+
         binding.chipExample1.setOnClickListener {
             binding.txtTestUrl.setText("https://duckduckgo.com")
         }
@@ -91,6 +101,40 @@ class AdminActivity : AppCompatActivity() {
         binding.txtWriteSettingsStatus.text =
             "${getString(com.kiosk.mda.R.string.admin_permission_write_settings)}: $statusText"
         binding.btnGrantWriteSettings.isEnabled = !granted
+    }
+
+    private fun checkForUpdate() {
+        if (!pinVerified) return
+        binding.btnCheckUpdate.isEnabled = false
+        lifecycleScope.launch {
+            val checker = UpdateChecker(applicationContext)
+            val info = checker.check()
+            binding.btnCheckUpdate.isEnabled = true
+            if (info == null) {
+                Toast.makeText(this@AdminActivity,
+                    com.kiosk.mda.R.string.admin_update_none,
+                    Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            Toast.makeText(this@AdminActivity,
+                "Version ${info.versionName} verfügbar, lade…",
+                Toast.LENGTH_SHORT).show()
+            val file = checker.download(info)
+            if (file == null) {
+                Toast.makeText(this@AdminActivity,
+                    com.kiosk.mda.R.string.update_download_failed,
+                    Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            if (!UpdateInstaller.canInstallPackages(this@AdminActivity)) {
+                Toast.makeText(this@AdminActivity,
+                    com.kiosk.mda.R.string.update_install_permission_required,
+                    Toast.LENGTH_LONG).show()
+                UpdateInstaller.openInstallPermissionSettings(this@AdminActivity)
+                return@launch
+            }
+            UpdateInstaller.install(this@AdminActivity, file)
+        }
     }
 
     private fun requestWriteSettings() {

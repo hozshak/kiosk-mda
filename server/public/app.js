@@ -58,6 +58,25 @@ const api = {
         if (!r.ok) return { devices: [] };
         return r.json();
     },
+    async apkLatest() {
+        const r = await fetch(`/api/apk/latest`, { credentials: 'include' });
+        if (!r.ok) return { meta: null, files: [] };
+        return r.json();
+    },
+    async apkUpload(file, versionCode, versionName) {
+        const fd = new FormData();
+        fd.append('apk', file);
+        fd.append('versionCode', String(versionCode));
+        fd.append('versionName', versionName);
+        const r = await fetch(`/api/apk/upload`, {
+            method: 'POST',
+            credentials: 'include',
+            body: fd,
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || 'upload failed');
+        return data;
+    },
     async envs() {
         const r = await fetch(`/api/envs`, { credentials: 'include' });
         if (!r.ok) return { stats: { test: 0, prod: 0 } };
@@ -337,8 +356,52 @@ $$('.tab').forEach(tab => {
         tab.classList.add('active');
         $(`.tab-content[data-tab="${tab.dataset.tab}"]`).classList.add('active');
         if (tab.dataset.tab === 'devices') loadDevices();
+        if (tab.dataset.tab === 'apk') loadApk();
     };
 });
+
+async function loadApk() {
+    const data = await api.apkLatest();
+    const info = $('#apk-current-info');
+    if (data.meta) {
+        const sizeMb = (data.meta.size / 1024 / 1024).toFixed(2);
+        info.innerHTML = `
+            <strong>versionCode:</strong> ${data.meta.versionCode}<br>
+            <strong>versionName:</strong> ${data.meta.versionName}<br>
+            <strong>Datei:</strong> ${data.meta.fileName} (${sizeMb} MB)<br>
+            <strong>Hochgeladen:</strong> ${new Date(data.meta.uploadedAt).toLocaleString('de-DE')}<br>
+            <strong>SHA-256:</strong> <span style="word-break:break-all;">${data.meta.sha256.slice(0, 32)}...</span>
+        `;
+    } else {
+        info.textContent = '— keine APK hochgeladen —';
+    }
+    $('#apk-endpoint-latest').textContent = `${location.origin}/apk/latest.json`;
+}
+
+$('#btn-apk-upload').onclick = async () => {
+    const file = $('#apk-file-input').files[0];
+    const versionCode = parseInt($('#apk-version-code').value, 10);
+    const versionName = $('#apk-version-name').value.trim();
+    const status = $('#apk-upload-status');
+
+    if (!file) { toast('Keine APK ausgewählt', 'error'); return; }
+    if (!versionCode || !versionName) { toast('versionCode und versionName erforderlich', 'error'); return; }
+    if (!file.name.toLowerCase().endsWith('.apk')) { toast('Datei muss .apk sein', 'error'); return; }
+
+    status.textContent = `Lade hoch (${(file.size / 1024 / 1024).toFixed(1)} MB)...`;
+    $('#btn-apk-upload').disabled = true;
+    try {
+        const result = await api.apkUpload(file, versionCode, versionName);
+        status.textContent = `Erfolgreich. ${result.delivered || 0} Geräte erhielten Push.`;
+        toast(`APK v${versionName} (${versionCode}) hochgeladen`, 'success');
+        loadApk();
+    } catch (e) {
+        status.textContent = '';
+        toast(e.message, 'error');
+    } finally {
+        $('#btn-apk-upload').disabled = false;
+    }
+};
 
 $('#btn-add-bookmark').onclick = () => {
     currentConfig.browser.bookmarks.push({ name: '', url: '' });

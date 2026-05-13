@@ -47,6 +47,8 @@ import com.kiosk.mda.config.KioskConfig
 import com.kiosk.mda.config.Orientation
 import com.kiosk.mda.databinding.ActivityMainBinding
 import com.kiosk.mda.push.PushClient
+import com.kiosk.mda.update.UpdateChecker
+import com.kiosk.mda.update.UpdateInstaller
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -55,6 +57,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var repo: ConfigRepository
     private lateinit var pushClient: PushClient
+    private lateinit var updateChecker: UpdateChecker
+    private var pendingUpdate: UpdateChecker.UpdateInfo? = null
 
     private var triplePressCount = 0
     private var lastTriplePressMs = 0L
@@ -89,10 +93,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val apkUpdateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            lifecycleScope.launch { checkForUpdate() }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repo = ConfigRepository.get(this)
         pushClient = PushClient(applicationContext)
+        updateChecker = UpdateChecker(applicationContext)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -105,6 +116,7 @@ class MainActivity : AppCompatActivity() {
         setupWebView()
         setupAdminTrigger()
         setupOskToggle()
+        setupUpdateBanner()
         observeConfig()
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -119,6 +131,12 @@ class MainActivity : AppCompatActivity() {
             IntentFilter(ConfigSyncWorker.ACTION_CONFIG_UPDATED),
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
+        ContextCompat.registerReceiver(
+            this,
+            apkUpdateReceiver,
+            IntentFilter("com.kiosk.mda.APK_UPDATE"),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
 
         lifecycleScope.launch {
             repo.fetchRemote()
@@ -126,6 +144,47 @@ class MainActivity : AppCompatActivity() {
 
         // WebSocket-Push starten - Backend pingt bei Config-Update
         pushClient.start(lifecycleScope)
+
+        // APK-Update beim Start prüfen
+        lifecycleScope.launch {
+            checkForUpdate()
+        }
+    }
+
+    private suspend fun checkForUpdate() {
+        val info = updateChecker.check() ?: return
+        runOnUiThread { showUpdateBanner(info) }
+    }
+
+    fun onPushApkUpdate() {
+        // Wird vom PushClient aufgerufen wenn Server "apk-update" sendet
+        lifecycleScope.launch { checkForUpdate() }
+    }
+
+    private fun showUpdateBanner(info: UpdateChecker.UpdateInfo) {
+        pendingUpdate = info
+        binding.updateBanner.visibility = View.VISIBLE
+        binding.updateBannerText.text = getString(
+            R.string.update_available, info.versionName, info.versionCode
+        )
+    }
+
+    private fun triggerInstall() {
+        val info = pendingUpdate ?: return
+        if (!UpdateInstaller.canInstallPackages(this)) {
+            Toast.makeText(this, R.string.update_install_permission_required, Toast.LENGTH_LONG).show()
+            UpdateInstaller.openInstallPermissionSettings(this)
+            return
+        }
+        Toast.makeText(this, R.string.update_downloading, Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            val file = updateChecker.download(info)
+            if (file == null) {
+                Toast.makeText(this@MainActivity, R.string.update_download_failed, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            UpdateInstaller.install(this@MainActivity, file)
+        }
     }
 
     override fun onPause() {
@@ -137,6 +196,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(configReceiver) }
+        runCatching { unregisterReceiver(apkUpdateReceiver) }
         runCatching { pushClient.stop() }
         if (repo.config.value.browser.clearCacheOnExit) {
             clearWebViewData()
@@ -392,6 +452,13 @@ class MainActivity : AppCompatActivity() {
             </html>
         """.trimIndent()
         view.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
+    }
+
+    private fun setupUpdateBanner() {
+        binding.updateBannerInstall.setOnClickListener { triggerInstall() }
+        binding.updateBannerDismiss.setOnClickListener {
+            binding.updateBanner.visibility = View.GONE
+        }
     }
 
     private fun setupOskToggle() {
