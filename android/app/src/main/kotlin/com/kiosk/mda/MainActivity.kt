@@ -250,6 +250,17 @@ class MainActivity : AppCompatActivity() {
             val newState = !binding.webView.oskEnabled
             binding.webView.oskEnabled = newState
             updateOskToggleIcon()
+
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE)
+                as android.view.inputmethod.InputMethodManager
+            if (newState) {
+                // Direkt aufmachen, damit User sofort tippen kann
+                binding.webView.requestFocus()
+                imm.showSoftInput(binding.webView, android.view.inputmethod.InputMethodManager.SHOW_FORCED)
+                imm.showSoftInput(binding.webView, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            } else {
+                imm.hideSoftInputFromWindow(binding.webView.windowToken, 0)
+            }
             val label = if (newState) getString(R.string.osk_mode_on) else getString(R.string.osk_mode_off)
             Toast.makeText(this, label, Toast.LENGTH_SHORT).show()
         }
