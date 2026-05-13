@@ -73,20 +73,15 @@
                 </div>
 
                 <h2 style="margin-top:24px;">On-Screen-Keyboard (OSK)</h2>
-                <p class="subtitle">Steuert ob die Bildschirm-Tastatur erscheint wenn Felder fokussiert werden. Scanner-Eingaben (HID) funktionieren in allen Modi.</p>
-                <div class="field">
-                    <label>OSK-Modus</label>
-                    <select id="cfg-osk-mode">
-                        <option value="off">Aus (für Scanner-Workflow)</option>
-                        <option value="auto" selected>Auto (nur bei Passwort-Feldern)</option>
-                        <option value="on">An (normales WebView-Verhalten)</option>
-                    </select>
-                    <small><strong>Auto</strong> erkennt <code>&lt;input type="password"&gt;</code> und Felder mit <code>data-osk="enabled"</code>.</small>
-                </div>
+                <p class="subtitle">Steuert ob die Bildschirm-Tastatur erscheint wenn Felder fokussiert werden. Scanner-Eingaben (HID) funktionieren unabhängig davon.</p>
                 <div class="row">
                     <label class="checkbox">
+                        <input type="checkbox" id="cfg-osk-enabled" />
+                        Bildschirm-Tastatur aktiviert (Standard für Scanner-Workflow: aus)
+                    </label>
+                    <label class="checkbox">
                         <input type="checkbox" id="cfg-osk-toggle" checked />
-                        Toggle-Button bottom-right anzeigen
+                        Toggle-Button am Gerät anzeigen
                     </label>
                 </div>
                 <div class="status-bar">
@@ -118,9 +113,17 @@
                     </select>
                 </div>
                 <div class="field">
-                    <label>Display-Timeout (Sekunden)</label>
+                    <label>Display-Timeout</label>
+                    <div class="timeout-presets">
+                        <button type="button" class="ghost preset-btn" data-timeout="0">Always-On</button>
+                        <button type="button" class="ghost preset-btn" data-timeout="30">30s</button>
+                        <button type="button" class="ghost preset-btn" data-timeout="60">1 Min</button>
+                        <button type="button" class="ghost preset-btn" data-timeout="300">5 Min</button>
+                        <button type="button" class="ghost preset-btn" data-timeout="1800">30 Min</button>
+                        <button type="button" class="ghost preset-btn" data-timeout="3600">1 Stunde</button>
+                    </div>
                     <input type="number" id="cfg-display-timeout" min="0" step="5" value="0" />
-                    <small><strong>0</strong> = Display bleibt immer an (Always-On). Sonst Standby nach N Sekunden Inaktivität.</small>
+                    <small><strong>0</strong> = Display bleibt immer an (Always-On). Sonst Standby nach N Sekunden Inaktivität. Wert wird in Sekunden gespeichert. Auf dem Gerät muss die <code>WRITE_SETTINGS</code>-Berechtigung erteilt sein (siehe Admin im Gerät).</small>
                 </div>
                 <div class="status-bar">
                     <button id="btn-save-device" class="primary">Speichern + Push</button>

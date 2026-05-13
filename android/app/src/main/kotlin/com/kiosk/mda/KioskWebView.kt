@@ -11,17 +11,16 @@ import android.webkit.WebView
 /**
  * WebView mit On-Screen-Keyboard-Kontrolle.
  *
- * Modi:
- *   OFF  – OSK wird komplett unterdrückt (HID-Scanner-Eingaben funktionieren weiter).
- *   AUTO – OSK nur wenn ein Password-Feld fokussiert ist (Detection via JS-Bridge).
- *   ON   – OSK normal (wie Standard-WebView).
+ * oskEnabled = false (default): Die System-Soft-Keyboard erscheint NICHT wenn Felder
+ *   in der Webseite fokussiert werden. HID-Tastatur-Eingaben (Barcode-Scanner) bleiben
+ *   funktional weil sie als KeyEvent kommen, nicht über InputConnection.
  *
- * Implementierung: onCreateInputConnection setzt inputType auf TYPE_NULL wenn OSK
- * unterdrückt werden soll. Das blockt die Soft-Keyboard-Anzeige auf System-Ebene,
- * lässt aber HID-Tastatur-Events (Barcode-Scanner) durch.
+ * oskEnabled = true: normales WebView-Verhalten, OSK öffnet sich.
  *
- * Nach jeder Modus-Änderung wird InputMethodManager.restartInput() aufgerufen,
- * damit Android onCreateInputConnection neu ausführt.
+ * Implementierung:
+ *  - onCheckIsTextEditor() entscheidet ob System uns überhaupt InputConnection anfragt
+ *  - onCreateInputConnection als zusätzlicher Block (setzt TYPE_NULL falls doch aufgerufen)
+ *  - imm.restartInput() bei Modus-Wechsel zwingt Re-Evaluation
  */
 class KioskWebView @JvmOverloads constructor(
     context: Context,
@@ -29,47 +28,26 @@ class KioskWebView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : WebView(context, attrs, defStyleAttr) {
 
-    enum class OskMode {
-        OFF, AUTO, ON;
-
-        fun next(): OskMode = when (this) {
-            OFF -> AUTO
-            AUTO -> ON
-            ON -> OFF
-        }
-
-        companion object {
-            fun fromString(s: String?): OskMode = when (s?.lowercase()) {
-                "on", "true", "1" -> ON
-                "auto" -> AUTO
-                else -> OFF
-            }
-        }
-    }
-
-    var oskMode: OskMode = OskMode.OFF
+    var oskEnabled: Boolean = false
         set(value) {
+            if (field == value) return
             field = value
             restartImeInput()
         }
 
-    /** Wird von OskBridge.onFieldFocus aus JS gesetzt. */
-    var passwordFieldFocused: Boolean = false
-        set(value) {
-            if (field == value) return
-            field = value
-            if (oskMode == OskMode.AUTO) restartImeInput()
-        }
+    override fun onCheckIsTextEditor(): Boolean {
+        // Wenn false, fragt das System gar nicht erst nach InputConnection
+        // und das Soft-Keyboard erscheint nie.
+        return oskEnabled
+    }
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
         val ic = super.onCreateInputConnection(outAttrs)
-        val allow = when (oskMode) {
-            OskMode.ON -> true
-            OskMode.OFF -> false
-            OskMode.AUTO -> passwordFieldFocused
-        }
-        if (!allow) {
+        if (!oskEnabled) {
+            // Zweite Verteidigungslinie falls das System trotz onCheckIsTextEditor=false
+            // doch fragt: TYPE_NULL = keine Soft-Tastatur.
             outAttrs.inputType = InputType.TYPE_NULL
+            outAttrs.imeOptions = EditorInfo.IME_ACTION_NONE
         }
         return ic
     }
@@ -77,10 +55,11 @@ class KioskWebView @JvmOverloads constructor(
     private fun restartImeInput() {
         try {
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.restartInput(this)
-            // Im OFF-Modus zusätzlich aktiv ausblenden falls gerade eingeblendet
-            if (oskMode == OskMode.OFF || (oskMode == OskMode.AUTO && !passwordFieldFocused)) {
+            if (oskEnabled) {
+                imm.restartInput(this)
+            } else {
                 imm.hideSoftInputFromWindow(windowToken, 0)
+                imm.restartInput(this)
             }
         } catch (_: Exception) {
         }

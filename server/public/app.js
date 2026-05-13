@@ -82,7 +82,7 @@ function parseXml(xml) {
             bookmarks,
             clearCacheOnExit: text('browser clearCacheOnExit').toLowerCase() === 'true',
             javaScriptEnabled: text('browser javaScriptEnabled').toLowerCase() !== 'false',
-            oskMode: (text('browser oskMode') || 'auto').toLowerCase(),
+            oskEnabled: parseOskEnabled(text('browser oskEnabled'), text('browser oskMode')),
             oskToggleVisible: text('browser oskToggleVisible').toLowerCase() !== 'false',
         },
         device: {
@@ -99,6 +99,14 @@ function parseXml(xml) {
     };
 }
 
+function parseOskEnabled(oskEnabledRaw, oskModeRaw) {
+    // Neuer Wert hat Vorrang
+    if (oskEnabledRaw) return oskEnabledRaw.toLowerCase() === 'true';
+    // Backwards-Compat: alter oskMode (on/auto -> true, off -> false)
+    const m = (oskModeRaw || '').toLowerCase();
+    return m === 'on' || m === 'auto' || m === 'true';
+}
+
 function buildXml(cfg) {
     const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const bookmarks = cfg.browser.bookmarks.filter(b => b.name && b.url).map(b =>
@@ -113,7 +121,7 @@ ${bookmarks}
         </bookmarks>
         <clearCacheOnExit>${cfg.browser.clearCacheOnExit ? 'true' : 'false'}</clearCacheOnExit>
         <javaScriptEnabled>${cfg.browser.javaScriptEnabled ? 'true' : 'false'}</javaScriptEnabled>
-        <oskMode>${esc(cfg.browser.oskMode || 'auto')}</oskMode>
+        <oskEnabled>${cfg.browser.oskEnabled ? 'true' : 'false'}</oskEnabled>
         <oskToggleVisible>${cfg.browser.oskToggleVisible !== false ? 'true' : 'false'}</oskToggleVisible>
     </browser>
     <device>
@@ -154,8 +162,9 @@ function populateForm() {
     $('#cfg-start-url').value = currentConfig.browser.startUrl;
     $('#cfg-clear-cache').checked = currentConfig.browser.clearCacheOnExit;
     $('#cfg-js-enabled').checked = currentConfig.browser.javaScriptEnabled;
-    $('#cfg-osk-mode').value = currentConfig.browser.oskMode || 'auto';
+    $('#cfg-osk-enabled').checked = !!currentConfig.browser.oskEnabled;
     $('#cfg-osk-toggle').checked = currentConfig.browser.oskToggleVisible !== false;
+    highlightTimeoutPreset(currentConfig.device.displayTimeout);
     $('#cfg-orientation').value = currentConfig.device.orientation;
     $('#cfg-display-timeout').value = currentConfig.device.displayTimeout;
     $('#cfg-pin').value = '';
@@ -191,7 +200,7 @@ async function saveAndPush() {
     currentConfig.browser.startUrl = $('#cfg-start-url').value.trim();
     currentConfig.browser.clearCacheOnExit = $('#cfg-clear-cache').checked;
     currentConfig.browser.javaScriptEnabled = $('#cfg-js-enabled').checked;
-    currentConfig.browser.oskMode = $('#cfg-osk-mode').value;
+    currentConfig.browser.oskEnabled = $('#cfg-osk-enabled').checked;
     currentConfig.browser.oskToggleVisible = $('#cfg-osk-toggle').checked;
     currentConfig.device.orientation = $('#cfg-orientation').value;
     currentConfig.device.displayTimeout = parseInt($('#cfg-display-timeout').value || '0', 10);
@@ -335,6 +344,26 @@ $('#btn-add-bookmark').onclick = () => {
     currentConfig.browser.bookmarks.push({ name: '', url: '' });
     renderBookmarks();
 };
+
+// Timeout-Presets
+function highlightTimeoutPreset(val) {
+    $$('.preset-btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.timeout, 10) === val);
+    });
+    const inp = $('#cfg-display-timeout');
+    if (inp) inp.value = val;
+}
+$$('.preset-btn').forEach(btn => {
+    btn.onclick = () => {
+        const val = parseInt(btn.dataset.timeout, 10);
+        highlightTimeoutPreset(val);
+        if (currentConfig) currentConfig.device.displayTimeout = val;
+    };
+});
+$('#cfg-display-timeout').addEventListener('input', (e) => {
+    const v = parseInt(e.target.value || '0', 10);
+    highlightTimeoutPreset(v);
+});
 
 $('#btn-push').onclick = saveAndPush;
 $('#btn-save-bookmarks').onclick = saveAndPush;

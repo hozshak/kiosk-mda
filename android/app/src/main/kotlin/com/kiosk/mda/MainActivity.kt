@@ -43,7 +43,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var repo: ConfigRepository
     private lateinit var pushClient: PushClient
-    private lateinit var oskBridge: OskBridge
 
     private var triplePressCount = 0
     private var lastTriplePressMs = 0L
@@ -178,8 +177,8 @@ class MainActivity : AppCompatActivity() {
 
         binding.webView.settings.javaScriptEnabled = config.browser.javaScriptEnabled
 
-        // OSK-Modus anwenden
-        binding.webView.oskMode = KioskWebView.OskMode.fromString(config.browser.oskMode)
+        // OSK aus Config anwenden
+        binding.webView.oskEnabled = config.browser.oskEnabled
         binding.oskToggle.visibility = if (config.browser.oskToggleVisible) View.VISIBLE else View.GONE
         updateOskToggleIcon()
 
@@ -226,7 +225,6 @@ class MainActivity : AppCompatActivity() {
 
     @Suppress("SetJavaScriptEnabled")
     private fun setupWebView() {
-        oskBridge = OskBridge(this, binding.webView)
         binding.webView.apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
@@ -238,15 +236,7 @@ class MainActivity : AppCompatActivity() {
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
 
-            addJavascriptInterface(oskBridge, OskBridge.INTERFACE_NAME)
-
-            webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView, url: String) {
-                    super.onPageFinished(view, url)
-                    // Bei jedem Seiten-Ende den OSK-Detector neu injizieren
-                    view.evaluateJavascript(OskBridge.INJECTED_JS, null)
-                }
-            }
+            webViewClient = WebViewClient()
             webChromeClient = WebChromeClient()
         }
         CookieManager.getInstance().setAcceptCookie(true)
@@ -254,26 +244,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupOskToggle() {
         binding.oskToggle.setOnClickListener {
-            val next = binding.webView.oskMode.next()
-            binding.webView.oskMode = next
+            val newState = !binding.webView.oskEnabled
+            binding.webView.oskEnabled = newState
             updateOskToggleIcon()
-            val label = when (next) {
-                KioskWebView.OskMode.OFF -> getString(R.string.osk_mode_off)
-                KioskWebView.OskMode.AUTO -> getString(R.string.osk_mode_auto)
-                KioskWebView.OskMode.ON -> getString(R.string.osk_mode_on)
-            }
+            val label = if (newState) getString(R.string.osk_mode_on) else getString(R.string.osk_mode_off)
             Toast.makeText(this, label, Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun updateOskToggleIcon() {
-        val res = when (binding.webView.oskMode) {
-            KioskWebView.OskMode.OFF -> R.drawable.ic_keyboard_off
-            KioskWebView.OskMode.AUTO -> R.drawable.ic_keyboard_off
-            KioskWebView.OskMode.ON -> R.drawable.ic_keyboard
-        }
-        binding.oskToggle.setImageResource(res)
-        binding.oskToggle.alpha = if (binding.webView.oskMode == KioskWebView.OskMode.OFF) 0.6f else 1.0f
+        val on = binding.webView.oskEnabled
+        binding.oskToggle.setImageResource(
+            if (on) R.drawable.ic_keyboard else R.drawable.ic_keyboard_off
+        )
+        binding.oskToggle.alpha = if (on) 1.0f else 0.6f
     }
 
     private fun setupAdminTrigger() {

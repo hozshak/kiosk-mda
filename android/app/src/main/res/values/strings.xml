@@ -36,9 +36,8 @@
     <string name="admin_btn_grant_write_settings">Berechtigung erteilen</string>
 
     <string name="osk_toggle_desc">Bildschirm-Tastatur umschalten</string>
-    <string name="osk_mode_off">OSK aus</string>
-    <string name="osk_mode_auto">OSK auto (nur Passwort)</string>
-    <string name="osk_mode_on">OSK an</string>
+    <string name="osk_mode_off">Bildschirm-Tastatur aus</string>
+    <string name="osk_mode_on">Bildschirm-Tastatur an</string>
 
     <string name="admin_section_server">Server-Config</string>
     <string name="admin_btn_sync">Config jetzt synchronisieren</string>

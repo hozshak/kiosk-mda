@@ -204,6 +204,22 @@ main {
     flex-wrap: wrap;
 }
 
+.timeout-presets {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.preset-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+.preset-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
 .checkbox {
     display: flex;
     align-items: center;
