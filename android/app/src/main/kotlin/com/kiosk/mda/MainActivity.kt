@@ -27,6 +27,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.kiosk.mda.admin.AdminActivity
 import com.kiosk.mda.admin.KioskDeviceAdminReceiver
@@ -285,19 +286,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Fängt das System-IME ab sobald es erscheint und blendet es wieder aus,
-     * solange oskEnabled=false. WebView (Chromium) ruft showSoftInput intern auf
-     * - View-Overrides reichen nicht. WindowInsets ist die zuverlässige Schiene.
+     * Macht zwei Dinge in einem WindowInsets-Listener:
+     *  1. Wenn oskEnabled=false und IME poppt auf → hideSoftInputFromWindow
+     *  2. Wenn oskEnabled=true und IME sichtbar → WebView per Padding nach oben drücken
+     *     (sonst rendert die OSK unter der edge-to-edge WebView und ist unsichtbar)
      */
     private fun setupImeBlocker() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+
             if (imeVisible && !binding.webView.oskEnabled) {
                 v.post {
                     val imm = getSystemService(Context.INPUT_METHOD_SERVICE)
                         as android.view.inputmethod.InputMethodManager
                     imm.hideSoftInputFromWindow(binding.webView.windowToken, 0)
                 }
+                v.updatePadding(bottom = 0)
+            } else {
+                // OSK an oder kein IME sichtbar: passe Padding an
+                v.updatePadding(bottom = if (imeVisible) imeInsets.bottom else 0)
             }
             insets
         }
