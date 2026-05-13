@@ -28,11 +28,10 @@ class KioskWebView @JvmOverloads constructor(
             if (!value) hideSoftKeyboard()
         }
 
-    override fun onCheckIsTextEditor(): Boolean {
-        // Wenn OSK an: behaupte "Text-Editor" damit das System bereit ist die IME zu zeigen.
-        // Wenn aus: Default-Verhalten des WebView (true nur bei fokussiertem input).
-        return oskEnabled || super.onCheckIsTextEditor()
-    }
+    // KEIN onCheckIsTextEditor-Override:
+    // Wenn wir true returnen ohne dass ein HTML-Input fokussiert ist, attached die IME
+    // an die WebView als "leerer Editor" -> User tippt, aber Text geht ins Leere.
+    // Stattdessen lassen wir die WebView selbst entscheiden (true nur bei fokussiertem input).
 
     private fun hideSoftKeyboard() {
         try {

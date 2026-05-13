@@ -1,5 +1,6 @@
 package com.kiosk.mda
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.admin.DevicePolicyManager
 import android.content.BroadcastReceiver
@@ -8,8 +9,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.webkit.PermissionRequest
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
@@ -55,6 +58,30 @@ class MainActivity : AppCompatActivity() {
 
     private var triplePressCount = 0
     private var lastTriplePressMs = 0L
+
+    private var pendingWebPermission: PermissionRequest? = null
+    private val androidPermLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+    ) { granted ->
+        val req = pendingWebPermission ?: return@registerForActivityResult
+        pendingWebPermission = null
+        val grantedResources = mutableListOf<String>()
+        for (resource in req.resources) {
+            val androidPerm = when (resource) {
+                PermissionRequest.RESOURCE_VIDEO_CAPTURE -> Manifest.permission.CAMERA
+                PermissionRequest.RESOURCE_AUDIO_CAPTURE -> Manifest.permission.RECORD_AUDIO
+                else -> null
+            }
+            if (androidPerm != null && granted[androidPerm] == true) {
+                grantedResources.add(resource)
+            }
+        }
+        if (grantedResources.isNotEmpty()) {
+            req.grant(grantedResources.toTypedArray())
+        } else {
+            req.deny()
+        }
+    }
 
     private val configReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -279,10 +306,58 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
             }
-            webChromeClient = WebChromeClient()
+            webChromeClient = object : WebChromeClient() {
+                override fun onPermissionRequest(request: PermissionRequest) {
+                    runOnUiThread { handleWebPermissionRequest(request) }
+                }
+
+                override fun onPermissionRequestCanceled(request: PermissionRequest) {
+                    if (pendingWebPermission === request) pendingWebPermission = null
+                }
+            }
         }
         CookieManager.getInstance().setAcceptCookie(true)
     }
+
+    /**
+     * Web-Seite fragt via getUserMedia() o.ä. nach Kamera/Mikrofon.
+     * Mappe Web-Resources auf Android-Runtime-Permissions und frage falls noch nicht erteilt.
+     */
+    private fun handleWebPermissionRequest(request: PermissionRequest) {
+        val needed = mutableListOf<String>()
+        val granted = mutableListOf<String>()
+        for (resource in request.resources) {
+            when (resource) {
+                PermissionRequest.RESOURCE_VIDEO_CAPTURE -> {
+                    if (hasPermission(Manifest.permission.CAMERA)) {
+                        granted.add(resource)
+                    } else {
+                        needed.add(Manifest.permission.CAMERA)
+                    }
+                }
+                PermissionRequest.RESOURCE_AUDIO_CAPTURE -> {
+                    if (hasPermission(Manifest.permission.RECORD_AUDIO)) {
+                        granted.add(resource)
+                    } else {
+                        needed.add(Manifest.permission.RECORD_AUDIO)
+                    }
+                }
+                PermissionRequest.RESOURCE_MIDI_SYSEX,
+                PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> {
+                    granted.add(resource)
+                }
+            }
+        }
+        if (needed.isEmpty()) {
+            request.grant(granted.toTypedArray())
+        } else {
+            pendingWebPermission = request
+            androidPermLauncher.launch(needed.toTypedArray())
+        }
+    }
+
+    private fun hasPermission(perm: String): Boolean =
+        ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED
 
     private fun showErrorPage(view: WebView, url: String, message: String, code: Int) {
         val escapedUrl = url.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -328,50 +403,44 @@ class MainActivity : AppCompatActivity() {
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE)
                 as android.view.inputmethod.InputMethodManager
 
+            // System-Setting "Bildschirm-Tastatur trotz Hardware-Tastatur" toggeln
+            // (auf PDAs mit Scanner-HID per Default aus -> OSK wird sonst unterdrückt).
+            // Klappt nur mit WRITE_SECURE_SETTINGS (per adb zu granten, siehe Doku).
+            setImeWithHardKeyboard(newState)
+
             if (newState) {
-                // 1. Versuche show_ime_with_hard_keyboard zu setzen (oft per Default
-                //    auf PDAs mit Scanner-HID aus -> Soft-Keyboard wird sonst unterdrückt)
-                ensureImeWithHardKeyboardEnabled()
-                // 2. WebView fokussieren
-                binding.webView.requestFocus()
-                // 3. showSoftInput - normalerweise via FORCED am zuverlässigsten,
-                //    auch wenn deprecated
-                @Suppress("DEPRECATION")
-                imm.showSoftInput(binding.webView, android.view.inputmethod.InputMethodManager.SHOW_FORCED)
-                // 4. Fallback: toggleSoftInput zwingt das System die IME zu zeigen
-                @Suppress("DEPRECATION")
-                imm.toggleSoftInput(android.view.inputmethod.InputMethodManager.SHOW_FORCED, 0)
+                // Versuche OSK zu öffnen, aber NUR auf das aktuell fokussierte Feld -
+                // requestFocus auf die WebView ohne HTML-Input fokussiert würde dazu führen
+                // dass Tastatur-Input ins Leere geht.
+                imm.showSoftInput(binding.webView, 0)
             } else {
                 imm.hideSoftInputFromWindow(binding.webView.windowToken, 0)
-                @Suppress("DEPRECATION")
-                imm.toggleSoftInput(0, android.view.inputmethod.InputMethodManager.HIDE_IMPLICIT_ONLY)
             }
-            val label = if (newState) getString(R.string.osk_mode_on) else getString(R.string.osk_mode_off)
-            Toast.makeText(this, label, Toast.LENGTH_SHORT).show()
+
+            val label = if (newState) {
+                getString(R.string.osk_mode_on) + " - tippe ins Eingabefeld"
+            } else {
+                getString(R.string.osk_mode_off)
+            }
+            Toast.makeText(this, label, Toast.LENGTH_LONG).show()
         }
     }
 
     /**
-     * Schaltet "Bildschirm-Tastatur trotz Hardware-Tastatur anzeigen" ein.
-     * Auf PDAs (Zebra/Scanner) klassifiziert Android den Scanner oft als HID-Keyboard
-     * und unterdrückt dann standardmäßig die Soft-Tastatur. Diese Settings.Secure
-     * Einstellung überschreibt das. Funktioniert nur als Device-Owner oder mit
-     * WRITE_SECURE_SETTINGS (signature permission) - sonst schlucken wir die Exception.
+     * Setzt Settings.Secure.show_ime_with_hard_keyboard.
+     * Benötigt WRITE_SECURE_SETTINGS (signature permission).
+     * One-time-grant per adb:
+     *   adb shell pm grant com.kiosk.mda android.permission.WRITE_SECURE_SETTINGS
      */
     @SuppressLint("WrongConstant")
-    private fun ensureImeWithHardKeyboardEnabled() {
+    private fun setImeWithHardKeyboard(enabled: Boolean) {
         try {
-            val current = android.provider.Settings.Secure.getInt(
-                contentResolver, "show_ime_with_hard_keyboard", 0
+            android.provider.Settings.Secure.putInt(
+                contentResolver, "show_ime_with_hard_keyboard", if (enabled) 1 else 0
             )
-            if (current == 0) {
-                android.provider.Settings.Secure.putInt(
-                    contentResolver, "show_ime_with_hard_keyboard", 1
-                )
-            }
         } catch (_: SecurityException) {
-            // Keine Permission - User muss in den System-Settings manuell aktivieren:
-            // Einstellungen -> Sprachen/Eingabe -> Physische Tastatur -> Bildschirm-Tastatur anzeigen
+            // Permission fehlt - User muss adb-grant ausführen oder die Einstellung manuell
+            // in Android-Einstellungen -> Sprachen -> Physische Tastatur aktivieren.
         } catch (_: Exception) {
         }
     }

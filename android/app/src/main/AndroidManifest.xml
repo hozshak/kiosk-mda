@@ -16,6 +16,19 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- Erlaubt Schreiben in Settings.Secure (insbesondere show_ime_with_hard_keyboard).
+         Signature-Permission - per adb grant nach Install zu erteilen:
+           adb shell pm grant com.kiosk.mda android.permission.WRITE_SECURE_SETTINGS -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Kamera + Mikrofon für Web-Apps die getUserMedia nutzen -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
     <application
         android:name=".KioskApplication"
         android:allowBackup="false"
