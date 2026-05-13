@@ -33,11 +33,9 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.kiosk.mda.admin.AdminActivity
 import com.kiosk.mda.admin.KioskDeviceAdminReceiver
@@ -110,7 +108,6 @@ class MainActivity : AppCompatActivity() {
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableImmersive()
-        setupImeBlocker()
         enableLockTaskIfDeviceOwner()
 
         setupWebView()
@@ -467,25 +464,21 @@ class MainActivity : AppCompatActivity() {
             binding.webView.oskEnabled = newState
             updateOskToggleIcon()
 
+            // Steuere systemweite Einstellung "Bildschirm-Tastatur trotz Hardware-Tastatur":
+            //   neuer Wert = true  -> setze auf 1 (OSK darf trotz Scanner-HID erscheinen)
+            //   neuer Wert = false -> setze auf 0 (System unterdrückt OSK weil HID-Keyboard)
+            // Klappt nur mit WRITE_SECURE_SETTINGS - sonst silent no-op.
+            setImeWithHardKeyboard(newState)
+
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE)
                 as android.view.inputmethod.InputMethodManager
 
-            // System-Setting "Bildschirm-Tastatur trotz Hardware-Tastatur" toggeln
-            // (auf PDAs mit Scanner-HID per Default aus -> OSK wird sonst unterdrückt).
-            // Klappt nur mit WRITE_SECURE_SETTINGS (per adb zu granten, siehe Doku).
-            setImeWithHardKeyboard(newState)
-
-            if (newState) {
-                // toggleSoftInput zeigt die IME "floating" - ohne fokussierten Editor.
-                // User tippt dann auf HTML-Feld, das bekommt Fokus, IME bleibt offen,
-                // Tippen geht in das HTML-Feld weil dessen InputConnection aktiv ist.
-                @Suppress("DEPRECATION")
-                imm.toggleSoftInput(android.view.inputmethod.InputMethodManager.SHOW_FORCED, 0)
-            } else {
+            if (!newState) {
+                // OSK aus: aktive Tastatur schließen
                 imm.hideSoftInputFromWindow(binding.webView.windowToken, 0)
-                @Suppress("DEPRECATION")
-                imm.toggleSoftInput(0, android.view.inputmethod.InputMethodManager.HIDE_IMPLICIT_ONLY)
             }
+            // OSK an: KEIN forciertes showSoftInput - das User-Tippen in ein Feld
+            // löst die OSK natürlich aus (jetzt erlaubt durch das System-Setting).
 
             val label = if (newState) {
                 getString(R.string.osk_mode_on) + " - tippe ins Eingabefeld"
@@ -543,32 +536,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun openAdmin() {
         startActivity(Intent(this, com.kiosk.mda.admin.AdminActivity::class.java))
-    }
-
-    /**
-     * Macht zwei Dinge in einem WindowInsets-Listener:
-     *  1. Wenn oskEnabled=false und IME poppt auf → hideSoftInputFromWindow
-     *  2. Wenn oskEnabled=true und IME sichtbar → WebView per Padding nach oben drücken
-     *     (sonst rendert die OSK unter der edge-to-edge WebView und ist unsichtbar)
-     */
-    private fun setupImeBlocker() {
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
-            val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
-            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
-
-            if (imeVisible && !binding.webView.oskEnabled) {
-                v.post {
-                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE)
-                        as android.view.inputmethod.InputMethodManager
-                    imm.hideSoftInputFromWindow(binding.webView.windowToken, 0)
-                }
-                v.updatePadding(bottom = 0)
-            } else {
-                // OSK an oder kein IME sichtbar: passe Padding an
-                v.updatePadding(bottom = if (imeVisible) imeInsets.bottom else 0)
-            }
-            insets
-        }
     }
 
     private fun enableImmersive() {

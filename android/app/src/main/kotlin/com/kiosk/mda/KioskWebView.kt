@@ -2,18 +2,15 @@ package com.kiosk.mda
 
 import android.content.Context
 import android.util.AttributeSet
-import android.view.inputmethod.InputMethodManager
 import android.webkit.WebView
 
 /**
- * WebView mit oskEnabled-Flag.
+ * Plain-WebView-Subclass.
  *
- * onCheckIsTextEditor wird überschrieben um beim Toggle "ich bin ein Text-Editor"
- * zu signalisieren - sonst zeigt das System keine IME wenn keine input-Element im
- * Web-Content fokussiert ist.
- *
- * Tatsächliches Verhalten beim Auto-Show wird in MainActivity via WindowInsets-
- * Listener gesteuert.
+ * oskEnabled wird nur als UI-Flag verwendet (für Icon-State des Toggle-Buttons).
+ * Alle OSK-Logik läuft über das System-Setting Settings.Secure.show_ime_with_hard_keyboard
+ * und InputMethodManager.toggleSoftInput in MainActivity - keine View-Overrides hier
+ * weil sie die WebView-Eigenlogik (InputConnection mit HTML-Inputs) brechen.
  */
 class KioskWebView @JvmOverloads constructor(
     context: Context,
@@ -22,22 +19,4 @@ class KioskWebView @JvmOverloads constructor(
 ) : WebView(context, attrs, defStyleAttr) {
 
     var oskEnabled: Boolean = false
-        set(value) {
-            if (field == value) return
-            field = value
-            if (!value) hideSoftKeyboard()
-        }
-
-    // KEIN onCheckIsTextEditor-Override:
-    // Wenn wir true returnen ohne dass ein HTML-Input fokussiert ist, attached die IME
-    // an die WebView als "leerer Editor" -> User tippt, aber Text geht ins Leere.
-    // Stattdessen lassen wir die WebView selbst entscheiden (true nur bei fokussiertem input).
-
-    private fun hideSoftKeyboard() {
-        try {
-            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.hideSoftInputFromWindow(windowToken, 0)
-        } catch (_: Exception) {
-        }
-    }
 }
