@@ -14,8 +14,10 @@ import android.os.Build
 import android.os.Bundle
 import android.webkit.PermissionRequest
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.provider.Settings
 import android.util.Log
 import android.net.http.SslError
@@ -114,6 +116,7 @@ class MainActivity : AppCompatActivity() {
         enableLockTaskIfDeviceOwner()
 
         setupWebView()
+        setupOskInputConnectionFix()
         setupAdminTrigger()
         setupOskToggle()
         setupUpdateBanner()
@@ -570,6 +573,33 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             insets
+        }
+    }
+
+    /**
+     * Fix für tote InputConnection bei aktiver Bildschirm-Tastatur.
+     *
+     * Symptom (per Diagnose bestätigt): nach dem Force-Show liefert die IME nur
+     * keyCode 229 ("Unidentified") und keyup, aber KEINE composition/input-Events
+     * - die Eingabe versickert, bis das Feld neu fokussiert wird (manuell z.B. durch
+     * Tab-Wechsel im Web-Content). Ursache: die WebView-InputConnection wurde
+     * aufgebaut bevor das HTML-Feld den Fokus hatte, die IME hält eine tote Verbindung.
+     *
+     * Fix: nach jedem Tap (sobald das Feld den DOM-Fokus hat) restartInput aufrufen.
+     * Das ist programmatisch genau der Refokus, der den Fehler von Hand behebt -
+     * ohne View-Overrides (die laut KioskWebView die WebView-Eigenlogik brachen).
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupOskInputConnectionFix() {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        binding.webView.setOnTouchListener { _, event ->
+            if (event.actionMasked == MotionEvent.ACTION_UP && binding.webView.oskEnabled) {
+                // Verzögert, damit die WebView den Tap verarbeitet und das Feld den Fokus hat.
+                binding.webView.postDelayed({
+                    runCatching { imm.restartInput(binding.webView) }
+                }, 150)
+            }
+            false // Touch nie konsumieren - WebView verarbeitet normal weiter
         }
     }
 
