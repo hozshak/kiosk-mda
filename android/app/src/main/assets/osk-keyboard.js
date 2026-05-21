@@ -25,13 +25,16 @@
     return !!window.__kioskOskOn;
   }
 
-  // ---- DEBUG-Overlay (temporaer zur Fehlersuche) ----
-  var DEBUG = true;
+  // ---- Debug-Overlay (aus; per window.__kioskKbDebug=true aktivierbar) ----
+  function dbgOn() {
+    try { if (window.top !== window) return !!window.top.__kioskKbDebug; } catch (e) {}
+    return !!window.__kioskKbDebug;
+  }
   var hud = null, focusinCount = 0, showCount = 0, lastFocus = '-';
   function isTop() { try { return window.top === window; } catch (e) { return false; } }
   function frameOrigin() { try { return location.origin + location.pathname; } catch (e) { return '?'; } }
   function hudUpdate() {
-    if (!DEBUG || !document.body) return;
+    if (!dbgOn() || !document.body) return;
     if (!hud) {
       hud = document.createElement('div');
       hud.id = 'kioskHud';
@@ -65,7 +68,7 @@
     ]
   };
 
-  function isEditable(el) {
+  function isNativeEditable(el) {
     if (!el) return false;
     if (el.isContentEditable) return true;
     var t = el.tagName;
@@ -77,10 +80,31 @@
     return false;
   }
 
+  // Loest das eigentliche editierbare Element auf - auch durch Web-Components/Shadow-DOM
+  // hindurch (z.B. Infor IDS <ids-input>, dessen echtes <input> im shadowRoot liegt).
+  function resolveEditable(el) {
+    if (!el) return null;
+    if (isNativeEditable(el)) return el;
+    if (el.shadowRoot) {
+      var inner = el.shadowRoot.querySelector('input, textarea, [contenteditable]');
+      if (inner) return inner;
+    }
+    if (el.querySelector) {
+      var light = el.querySelector('input, textarea, [contenteditable]');
+      if (light) return light;
+    }
+    return null;
+  }
+
+  function isEditable(el) { return !!resolveEditable(el); }
+
   function activeField() {
+    // Durch Shadow-Roots bis zum tatsaechlich fokussierten Element absteigen
     var a = document.activeElement;
-    if (isEditable(a)) return a;
-    if (lastField && document.contains(lastField)) return lastField;
+    while (a && a.shadowRoot && a.shadowRoot.activeElement) { a = a.shadowRoot.activeElement; }
+    var f = resolveEditable(a);
+    if (f) return f;
+    if (lastField && lastField.isConnected) return lastField;
     return null;
   }
 
@@ -268,15 +292,19 @@
 
   // ---- Fokus-Logik ----
   document.addEventListener('focusin', function (e) {
-    var el = e.target;
+    // composedPath()[0] = echtes Element durch Shadow-DOM hindurch (sonst nur der Host)
+    var path = (e.composedPath && e.composedPath()) || [];
+    var raw = path[0] || e.target;
+    var field = resolveEditable(raw) || resolveEditable(e.target);
     focusinCount++;
-    lastFocus = (el && el.tagName ? el.tagName : '?') + (el && el.id ? '#' + el.id : '') +
-                ' type=' + (el && el.getAttribute ? (el.getAttribute('type') || '-') : '-') +
-                ' ed=' + isEditable(el);
+    var d = raw && raw.tagName ? raw.tagName : '?';
+    if (raw && raw.id) d += '#' + raw.id;
+    lastFocus = d + ' type=' + (raw && raw.getAttribute ? (raw.getAttribute('type') || '-') : '-') +
+                ' ed=' + !!field;
     hudUpdate();
-    if (!isEditable(el)) return;
-    lastField = el;
-    suppressSystemKb(el);
+    if (!field) return;
+    lastField = field;
+    suppressSystemKb(field);
     if (oskOn()) show();
   }, true);
 
