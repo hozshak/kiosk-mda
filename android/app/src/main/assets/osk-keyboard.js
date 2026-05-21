@@ -18,6 +18,13 @@
   var layer = 'abc';
   var lastField = null;
 
+  // OSK-Status frame-uebergreifend: in iframes das Flag vom Top-Dokument lesen.
+  function oskOn() {
+    try { if (window.top !== window) return !!window.top.__kioskOskOn; }
+    catch (e) { return true; } // cross-origin iframe -> Tastatur zulassen
+    return !!window.__kioskOskOn;
+  }
+
   var LAYOUT = {
     abc: [
       ['1','2','3','4','5','6','7','8','9','0'],
@@ -196,7 +203,7 @@
   }
 
   function show() {
-    if (!window.__kioskOskOn) return;
+    if (!oskOn()) return;
     var root = getRoot();
     render();
     root.classList.add('kk-visible');
@@ -218,19 +225,19 @@
     s.id = 'kioskKbStyle';
     s.textContent = [
       '#' + KB_ID + '{position:fixed;left:0;right:0;bottom:0;z-index:2147483647;',
-      'background:#1a1f29;padding:6px;box-shadow:0 -4px 16px rgba(0,0,0,.5);',
-      'display:none;flex-direction:column;gap:6px;font-family:system-ui,sans-serif;',
+      'background:#1a1f29;padding:4px;box-shadow:0 -3px 12px rgba(0,0,0,.5);',
+      'display:none;flex-direction:column;gap:4px;font-family:system-ui,sans-serif;',
       'touch-action:manipulation;user-select:none;-webkit-user-select:none;}',
       '#' + KB_ID + '.kk-visible{display:flex;}',
-      '#' + KB_ID + ' .kk-row{display:flex;gap:6px;justify-content:center;}',
-      '#' + KB_ID + ' .kk-key{flex:1;min-width:0;height:52px;display:flex;align-items:center;',
-      'justify-content:center;background:#2e3441;color:#e6e8eb;border-radius:6px;',
-      'font-size:20px;font-weight:500;cursor:pointer;border:1px solid #3a4150;}',
+      '#' + KB_ID + ' .kk-row{display:flex;gap:4px;justify-content:center;}',
+      '#' + KB_ID + ' .kk-key{flex:1;min-width:0;height:38px;display:flex;align-items:center;',
+      'justify-content:center;background:#2e3441;color:#e6e8eb;border-radius:5px;',
+      'font-size:15px;font-weight:500;cursor:pointer;border:1px solid #3a4150;}',
       '#' + KB_ID + ' .kk-key:active{background:#4da3ff;color:#fff;}',
-      '#' + KB_ID + ' .kk-fn{background:#252b38;font-size:16px;flex:1.3;}',
+      '#' + KB_ID + ' .kk-fn{background:#252b38;font-size:13px;flex:1.3;}',
       '#' + KB_ID + ' .kk-space{flex:5;}',
       '#' + KB_ID + ' .kk-active{background:#4da3ff;color:#fff;}',
-      'html.kk-open body{padding-bottom:300px !important;}'
+      'html.kk-open body{padding-bottom:210px !important;}'
     ].join('');
     (document.head || document.documentElement).appendChild(s);
   }
@@ -241,7 +248,7 @@
     if (!isEditable(el)) return;
     lastField = el;
     suppressSystemKb(el);
-    if (window.__kioskOskOn) show();
+    if (oskOn()) show();
   }, true);
 
   document.addEventListener('focusout', function () {
@@ -253,7 +260,7 @@
 
   // Von nativ nach Toggle aufgerufen
   window.__kioskKbUpdate = function () {
-    if (window.__kioskOskOn) {
+    if (oskOn()) {
       var el = activeField();
       if (el) { suppressSystemKb(el); show(); }
     } else {
@@ -263,7 +270,7 @@
 
   injectStyle();
   // Falls beim Laden schon ein Feld fokussiert ist
-  if (window.__kioskOskOn && isEditable(document.activeElement)) {
+  if (oskOn() && isEditable(document.activeElement)) {
     lastField = document.activeElement;
     suppressSystemKb(lastField);
     show();

@@ -39,6 +39,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import com.kiosk.mda.admin.AdminActivity
 import com.kiosk.mda.admin.KioskDeviceAdminReceiver
 import com.kiosk.mda.config.ConfigRepository
@@ -399,6 +401,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
         CookieManager.getInstance().setAcceptCookie(true)
+
+        // Tastatur in ALLE Frames injizieren (inkl. iframes, z.B. blending-Login).
+        // evaluateJavascript erreicht nur das Hauptdokument - addDocumentStartJavaScript
+        // injiziert bei document-start in jeden passenden Frame.
+        if (oskKeyboardJs.isNotBlank() &&
+            WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
+        ) {
+            runCatching {
+                WebViewCompat.addDocumentStartJavaScript(binding.webView, oskKeyboardJs, setOf("*"))
+            }
+        }
     }
 
     /**
