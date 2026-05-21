@@ -283,6 +283,7 @@ class MainActivity : AppCompatActivity() {
         binding.webView.oskEnabled = config.browser.oskEnabled
         binding.oskToggle.visibility = if (config.browser.oskToggleVisible) View.VISIBLE else View.GONE
         updateOskToggleIcon()
+        updateOskJsFlag()
 
         val current = binding.webView.url
         val target = config.browser.startUrl.takeIf {
@@ -342,6 +343,11 @@ class MainActivity : AppCompatActivity() {
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
             webViewClient = object : WebViewClient() {
+                override fun onPageFinished(view: WebView, url: String?) {
+                    super.onPageFinished(view, url)
+                    injectOskFocusFix(view)
+                }
+
                 override fun onReceivedSslError(
                     view: WebView, handler: SslErrorHandler, error: SslError
                 ) {
@@ -479,6 +485,7 @@ class MainActivity : AppCompatActivity() {
             val newState = !binding.webView.oskEnabled
             binding.webView.oskEnabled = newState
             updateOskToggleIcon()
+            updateOskJsFlag()
 
             // System-Setting setzen (klappt nur mit WRITE_SECURE_SETTINGS, sonst no-op)
             setImeWithHardKeyboard(newState)
@@ -601,6 +608,49 @@ class MainActivity : AppCompatActivity() {
             }
             false // Touch nie konsumieren - WebView verarbeitet normal weiter
         }
+    }
+
+    /**
+     * Eigentlicher Fix (DOM-Ebene): repliziert den manuellen tools<->blending-Wechsel.
+     *
+     * Per Diagnose ist klar: nativer restartInput allein behebt die tote IME-Verbindung
+     * NICHT - erst wenn das HTML-Feld im DOM den Fokus verliert und neu bekommt (wie beim
+     * Tab-Wechsel) baut die WebView eine frische InputConnection auf. Wir injizieren daher
+     * einen focusin-Listener, der bei aktiver Tastatur jedes fokussierte Eingabefeld einmal
+     * blur+refokussiert. Läuft auf jeder Seite (auch fremdes ERP), da via evaluateJavascript
+     * injiziert - umgeht die Page-CSP.
+     */
+    private fun injectOskFocusFix(view: WebView) {
+        val oskOn = binding.webView.oskEnabled
+        val js = """
+            (function(){
+              window.__kioskOskOn = $oskOn;
+              if (window.__kioskOskFixInstalled) return;
+              window.__kioskOskFixInstalled = true;
+              var busy = false;
+              document.addEventListener('focusin', function(e){
+                if (!window.__kioskOskOn || busy) return;
+                var el = e.target;
+                if (!el || !(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+                busy = true;
+                // blur + refocus -> WebView baut die InputConnection fuer das Feld neu auf
+                setTimeout(function(){
+                  try { el.blur(); } catch (_) {}
+                  setTimeout(function(){
+                    try { el.focus({ preventScroll: true }); } catch (_) { try { el.focus(); } catch (_) {} }
+                    setTimeout(function(){ busy = false; }, 0);
+                  }, 60);
+                }, 0);
+              }, true);
+            })();
+        """.trimIndent()
+        view.evaluateJavascript(js, null)
+    }
+
+    /** OSK-Zustand ins JS spiegeln, damit der focusin-Fix nur bei aktiver Tastatur greift. */
+    private fun updateOskJsFlag() {
+        val oskOn = binding.webView.oskEnabled
+        binding.webView.evaluateJavascript("window.__kioskOskOn = $oskOn;", null)
     }
 
     private fun enableImmersive() {
