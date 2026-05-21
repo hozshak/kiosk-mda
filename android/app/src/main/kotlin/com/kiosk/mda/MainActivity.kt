@@ -60,6 +60,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var updateChecker: UpdateChecker
     private var pendingUpdate: UpdateChecker.UpdateInfo? = null
 
+    // Eigene Bildschirm-Tastatur (HTML/JS), wird in jede Seite injiziert.
+    private val oskKeyboardJs: String by lazy {
+        runCatching { assets.open("osk-keyboard.js").bufferedReader().use { it.readText() } }.getOrDefault("")
+    }
+
     private var triplePressCount = 0
     private var lastTriplePressMs = 0L
 
@@ -343,7 +348,7 @@ class MainActivity : AppCompatActivity() {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String?) {
                     super.onPageFinished(view, url)
-                    injectOskFocusFix(view)
+                    injectKeyboard(view)
                 }
 
                 override fun onReceivedSslError(
@@ -392,7 +397,6 @@ class MainActivity : AppCompatActivity() {
                     return true
                 }
             }
-            addJavascriptInterface(OskBridge(), "KioskOsk")
         }
         CookieManager.getInstance().setAcceptCookie(true)
     }
@@ -484,26 +488,13 @@ class MainActivity : AppCompatActivity() {
             val newState = !binding.webView.oskEnabled
             binding.webView.oskEnabled = newState
             updateOskToggleIcon()
+            // Steuert unsere eigene HTML/JS-Tastatur (System-IME wird nicht mehr genutzt).
             updateOskJsFlag()
 
-            // System-Setting setzen (klappt nur mit WRITE_SECURE_SETTINGS, sonst no-op)
-            setImeWithHardKeyboard(newState)
-
+            // System-Tastatur sicher ausblenden - wir verwenden ausschliesslich die eigene.
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE)
                 as android.view.inputmethod.InputMethodManager
-
-            if (newState) {
-                // Force-Show als Fallback wenn show_ime_with_hard_keyboard nicht gegranted
-                // werden konnte. toggleSoftInput(SHOW_FORCED) zeigt die IME ohne View-Override
-                // - User tippt dann auf HTML-Feld, WebView's eigene InputConnection routet
-                // Tipps korrekt ins Feld.
-                @Suppress("DEPRECATION")
-                imm.toggleSoftInput(android.view.inputmethod.InputMethodManager.SHOW_FORCED, 0)
-            } else {
-                imm.hideSoftInputFromWindow(binding.webView.windowToken, 0)
-                @Suppress("DEPRECATION")
-                imm.toggleSoftInput(0, android.view.inputmethod.InputMethodManager.HIDE_IMPLICIT_ONLY)
-            }
+            imm.hideSoftInputFromWindow(binding.webView.windowToken, 0)
 
             val label = if (newState) {
                 getString(R.string.osk_mode_on) + " - tippe ins Eingabefeld"
@@ -564,14 +555,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Wenn OSK aus: jedes Mal wenn die System-IME hochpoppt (z.B. weil WebView den
-     * Focus auf ein Eingabefeld setzt) sofort wieder ausblenden.
-     * Minimale Logik - kein Padding, kein Resize, nur Hide.
+     * Die System-IME wird gar nicht mehr verwendet (eigene HTML/JS-Tastatur ersetzt sie).
+     * Daher: sobald die System-IME hochpoppt (z.B. weil die WebView ein Feld fokussiert),
+     * sofort wieder ausblenden - unabhaengig vom OSK-Zustand. inputmode="none" in der
+     * injizierten JS-Tastatur verhindert das Aufpoppen meist schon vorher.
      */
     private fun setupOskSuppression() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
-            if (imeVisible && !binding.webView.oskEnabled) {
+            if (imeVisible) {
                 val imm = getSystemService(Context.INPUT_METHOD_SERVICE)
                     as android.view.inputmethod.InputMethodManager
                 binding.webView.post {
@@ -583,70 +575,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * JS->Native-Brücke. Wird vom injizierten focusin-Fix aufgerufen, nachdem das
-     * Eingabefeld im DOM blur+refokussiert wurde: die WebView hat dann eine frische
-     * InputConnection, aber das blur() hat die Tastatur ausgeblendet. Wir bauen die
-     * IME-Verbindung per restartInput neu auf und blenden die Tastatur wieder ein -
-     * nativ (showSoftInput), weil ein programmatisches el.focus() ohne Geste die
-     * Tastatur nicht zuverlässig zurückholt.
+     * Injiziert die eigene Bildschirm-Tastatur (HTML/JS-Overlay) in die geladene Seite.
+     * Sie schreibt Zeichen per JS direkt ins fokussierte Feld und umgeht die Android-IME
+     * komplett (kein keyCode 229 / keine composition). Idempotent - die JS-Seite installiert
+     * sich nur einmal pro Dokument (window.__kioskKbInstalled).
      */
-    private inner class OskBridge {
-        @android.webkit.JavascriptInterface
-        fun showKeyboard() {
-            binding.webView.post {
-                if (!binding.webView.oskEnabled) return@post
-                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                runCatching {
-                    imm.restartInput(binding.webView)
-                    imm.showSoftInput(binding.webView, InputMethodManager.SHOW_IMPLICIT)
-                }
-            }
-        }
+    private fun injectKeyboard(view: WebView) {
+        if (oskKeyboardJs.isBlank()) return
+        view.evaluateJavascript("window.__kioskOskOn = ${binding.webView.oskEnabled};", null)
+        view.evaluateJavascript(oskKeyboardJs, null)
     }
 
-    /**
-     * Eigentlicher Fix (DOM-Ebene): repliziert den manuellen tools<->blending-Wechsel.
-     *
-     * Per Diagnose ist klar: nativer restartInput allein behebt die tote IME-Verbindung
-     * NICHT - erst wenn das HTML-Feld im DOM den Fokus verliert und neu bekommt (wie beim
-     * Tab-Wechsel) baut die WebView eine frische InputConnection auf. Wir injizieren daher
-     * einen focusin-Listener, der bei aktiver Tastatur jedes fokussierte Eingabefeld einmal
-     * blur+refokussiert. Läuft auf jeder Seite (auch fremdes ERP), da via evaluateJavascript
-     * injiziert - umgeht die Page-CSP.
-     */
-    private fun injectOskFocusFix(view: WebView) {
-        val oskOn = binding.webView.oskEnabled
-        val js = """
-            (function(){
-              window.__kioskOskOn = $oskOn;
-              if (window.__kioskOskFixInstalled) return;
-              window.__kioskOskFixInstalled = true;
-              var busy = false;
-              document.addEventListener('focusin', function(e){
-                if (!window.__kioskOskOn || busy) return;
-                var el = e.target;
-                if (!el || !(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
-                busy = true;
-                // blur + refocus -> WebView baut die InputConnection fuer das Feld neu auf,
-                // danach Tastatur nativ wieder einblenden (blur hat sie ausgeblendet).
-                setTimeout(function(){
-                  try { el.blur(); } catch (_) {}
-                  setTimeout(function(){
-                    try { el.focus({ preventScroll: true }); } catch (_) { try { el.focus(); } catch (_) {} }
-                    try { if (window.KioskOsk && KioskOsk.showKeyboard) KioskOsk.showKeyboard(); } catch (_) {}
-                    setTimeout(function(){ busy = false; }, 0);
-                  }, 60);
-                }, 0);
-              }, true);
-            })();
-        """.trimIndent()
-        view.evaluateJavascript(js, null)
-    }
-
-    /** OSK-Zustand ins JS spiegeln, damit der focusin-Fix nur bei aktiver Tastatur greift. */
+    /** OSK-Zustand ins JS spiegeln und die eigene Tastatur ein-/ausblenden. */
     private fun updateOskJsFlag() {
         val oskOn = binding.webView.oskEnabled
-        binding.webView.evaluateJavascript("window.__kioskOskOn = $oskOn;", null)
+        binding.webView.evaluateJavascript(
+            "window.__kioskOskOn = $oskOn; if (window.__kioskKbUpdate) window.__kioskKbUpdate();",
+            null
+        )
     }
 
     private fun enableImmersive() {
