@@ -25,6 +25,29 @@
     return !!window.__kioskOskOn;
   }
 
+  // ---- DEBUG-Overlay (temporaer zur Fehlersuche) ----
+  var DEBUG = true;
+  var hud = null, focusinCount = 0, showCount = 0, lastFocus = '-';
+  function isTop() { try { return window.top === window; } catch (e) { return false; } }
+  function frameOrigin() { try { return location.origin + location.pathname; } catch (e) { return '?'; } }
+  function hudUpdate() {
+    if (!DEBUG || !document.body) return;
+    if (!hud) {
+      hud = document.createElement('div');
+      hud.id = 'kioskHud';
+      hud.style.cssText = 'position:fixed;top:0;left:0;z-index:2147483647;background:rgba(0,0,0,.82);' +
+        'color:#3f6;font:11px/1.35 monospace;padding:4px 7px;max-width:72vw;white-space:pre-wrap;pointer-events:none;';
+      document.body.appendChild(hud);
+    }
+    var kb = document.getElementById(KB_ID);
+    var kbState = kb ? (kb.classList.contains('kk-visible') ? 'VISIBLE' : 'hidden') : 'none';
+    hud.textContent =
+      'KB[' + (isTop() ? 'TOP' : 'SUB') + '] ' + frameOrigin() + '\n' +
+      'osk=' + oskOn() + ' iframes=' + document.querySelectorAll('iframe').length + '\n' +
+      'focusin#' + focusinCount + ': ' + lastFocus + '\n' +
+      'show=' + showCount + ' kb=' + kbState;
+  }
+
   var LAYOUT = {
     abc: [
       ['1','2','3','4','5','6','7','8','9','0'],
@@ -210,6 +233,7 @@
     document.documentElement.classList.add('kk-open');
     var el = activeField();
     if (el) { try { el.scrollIntoView({ block: 'center' }); } catch (e) {} }
+    showCount++; hudUpdate();
   }
 
   function hide() {
@@ -245,6 +269,11 @@
   // ---- Fokus-Logik ----
   document.addEventListener('focusin', function (e) {
     var el = e.target;
+    focusinCount++;
+    lastFocus = (el && el.tagName ? el.tagName : '?') + (el && el.id ? '#' + el.id : '') +
+                ' type=' + (el && el.getAttribute ? (el.getAttribute('type') || '-') : '-') +
+                ' ed=' + isEditable(el);
+    hudUpdate();
     if (!isEditable(el)) return;
     lastField = el;
     suppressSystemKb(el);
@@ -275,4 +304,8 @@
     suppressSystemKb(lastField);
     show();
   }
+  // DEBUG-HUD initial anzeigen (sobald body existiert)
+  if (document.body) hudUpdate();
+  else document.addEventListener('DOMContentLoaded', hudUpdate);
+  setTimeout(hudUpdate, 800);
 })();
