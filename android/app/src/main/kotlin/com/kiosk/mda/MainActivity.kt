@@ -14,7 +14,6 @@ import android.os.Build
 import android.os.Bundle
 import android.webkit.PermissionRequest
 import android.view.KeyEvent
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
@@ -116,7 +115,6 @@ class MainActivity : AppCompatActivity() {
         enableLockTaskIfDeviceOwner()
 
         setupWebView()
-        setupOskInputConnectionFix()
         setupAdminTrigger()
         setupOskToggle()
         setupUpdateBanner()
@@ -394,6 +392,7 @@ class MainActivity : AppCompatActivity() {
                     return true
                 }
             }
+            addJavascriptInterface(OskBridge(), "KioskOsk")
         }
         CookieManager.getInstance().setAcceptCookie(true)
     }
@@ -584,29 +583,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Fix für tote InputConnection bei aktiver Bildschirm-Tastatur.
-     *
-     * Symptom (per Diagnose bestätigt): nach dem Force-Show liefert die IME nur
-     * keyCode 229 ("Unidentified") und keyup, aber KEINE composition/input-Events
-     * - die Eingabe versickert, bis das Feld neu fokussiert wird (manuell z.B. durch
-     * Tab-Wechsel im Web-Content). Ursache: die WebView-InputConnection wurde
-     * aufgebaut bevor das HTML-Feld den Fokus hatte, die IME hält eine tote Verbindung.
-     *
-     * Fix: nach jedem Tap (sobald das Feld den DOM-Fokus hat) restartInput aufrufen.
-     * Das ist programmatisch genau der Refokus, der den Fehler von Hand behebt -
-     * ohne View-Overrides (die laut KioskWebView die WebView-Eigenlogik brachen).
+     * JS->Native-Brücke. Wird vom injizierten focusin-Fix aufgerufen, nachdem das
+     * Eingabefeld im DOM blur+refokussiert wurde: die WebView hat dann eine frische
+     * InputConnection, aber das blur() hat die Tastatur ausgeblendet. Wir bauen die
+     * IME-Verbindung per restartInput neu auf und blenden die Tastatur wieder ein -
+     * nativ (showSoftInput), weil ein programmatisches el.focus() ohne Geste die
+     * Tastatur nicht zuverlässig zurückholt.
      */
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setupOskInputConnectionFix() {
-        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        binding.webView.setOnTouchListener { _, event ->
-            if (event.actionMasked == MotionEvent.ACTION_UP && binding.webView.oskEnabled) {
-                // Verzögert, damit die WebView den Tap verarbeitet und das Feld den Fokus hat.
-                binding.webView.postDelayed({
-                    runCatching { imm.restartInput(binding.webView) }
-                }, 150)
+    private inner class OskBridge {
+        @android.webkit.JavascriptInterface
+        fun showKeyboard() {
+            binding.webView.post {
+                if (!binding.webView.oskEnabled) return@post
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                runCatching {
+                    imm.restartInput(binding.webView)
+                    imm.showSoftInput(binding.webView, InputMethodManager.SHOW_IMPLICIT)
+                }
             }
-            false // Touch nie konsumieren - WebView verarbeitet normal weiter
         }
     }
 
@@ -633,11 +627,13 @@ class MainActivity : AppCompatActivity() {
                 var el = e.target;
                 if (!el || !(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
                 busy = true;
-                // blur + refocus -> WebView baut die InputConnection fuer das Feld neu auf
+                // blur + refocus -> WebView baut die InputConnection fuer das Feld neu auf,
+                // danach Tastatur nativ wieder einblenden (blur hat sie ausgeblendet).
                 setTimeout(function(){
                   try { el.blur(); } catch (_) {}
                   setTimeout(function(){
                     try { el.focus({ preventScroll: true }); } catch (_) { try { el.focus(); } catch (_) {} }
+                    try { if (window.KioskOsk && KioskOsk.showKeyboard) KioskOsk.showKeyboard(); } catch (_) {}
                     setTimeout(function(){ busy = false; }, 0);
                   }, 60);
                 }, 0);
