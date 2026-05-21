@@ -173,7 +173,8 @@
     root = document.createElement('div');
     root.id = KB_ID;
     root.setAttribute('translate', 'no');
-    document.documentElement.appendChild(root);
+    // WICHTIG: an <body> haengen - direkte Kinder von <html> rendert Chromium nicht.
+    (document.body || document.documentElement).appendChild(root);
     return root;
   }
 
