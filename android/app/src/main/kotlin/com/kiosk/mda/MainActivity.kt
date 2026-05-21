@@ -401,6 +401,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         CookieManager.getInstance().setAcceptCookie(true)
+        binding.webView.addJavascriptInterface(KbBridge(), "KioskKb")
 
         // Tastatur in ALLE Frames injizieren (inkl. iframes, z.B. blending-Login).
         // evaluateJavascript erreicht nur das Hauptdokument - addDocumentStartJavaScript
@@ -595,8 +596,28 @@ class MainActivity : AppCompatActivity() {
      */
     private fun injectKeyboard(view: WebView) {
         if (oskKeyboardJs.isBlank()) return
+        binding.oskToggle.translationY = 0f // bei neuer Seite Position zuruecksetzen
         view.evaluateJavascript("window.__kioskOskOn = ${binding.webView.oskEnabled};", null)
         view.evaluateJavascript(oskKeyboardJs, null)
+    }
+
+    /**
+     * JS->Native-Brücke nur fuer die UI: meldet wenn die HTML-Tastatur ein-/ausblendet,
+     * damit der native OSK-Toggle-Button knapp ueber die Tastatur rueckt (sonst verdeckt).
+     * ratio = Tastaturhoehe / Viewport-Hoehe (CSS) -> in Geraete-Pixel umgerechnet.
+     */
+    private inner class KbBridge {
+        @android.webkit.JavascriptInterface
+        fun onKbShown(ratio: Float) {
+            binding.webView.post {
+                val px = binding.webView.height * ratio.coerceIn(0f, 1f)
+                binding.oskToggle.translationY = -px
+            }
+        }
+        @android.webkit.JavascriptInterface
+        fun onKbHidden() {
+            binding.webView.post { binding.oskToggle.translationY = 0f }
+        }
     }
 
     /** OSK-Zustand ins JS spiegeln und die eigene Tastatur ein-/ausblenden. */

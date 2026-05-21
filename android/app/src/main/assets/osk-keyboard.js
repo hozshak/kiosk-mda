@@ -258,12 +258,26 @@
     var el = activeField();
     if (el) { try { el.scrollIntoView({ block: 'center' }); } catch (e) {} }
     showCount++; hudUpdate();
+    reportKbToNative();
+  }
+
+  // Tastaturhoehe an Native melden, damit der OSK-Toggle-Button darueber rueckt.
+  function reportKbToNative() {
+    try {
+      if (window.KioskKb && KioskKb.onKbShown) {
+        var kb = document.getElementById(KB_ID);
+        var h = kb ? kb.getBoundingClientRect().height : 0;
+        var ih = window.innerHeight || 1;
+        KioskKb.onKbShown(h / ih);
+      }
+    } catch (e) {}
   }
 
   function hide() {
     var root = document.getElementById(KB_ID);
     if (root) root.classList.remove('kk-visible');
     document.documentElement.classList.remove('kk-open');
+    try { if (window.KioskKb && KioskKb.onKbHidden) KioskKb.onKbHidden(); } catch (e) {}
   }
 
   // ---- Styles ----
